@@ -37,7 +37,7 @@ class FNetwork(nn.Module):
 
 class Critic(nn.Module):
     def __init__(self, num_inputs, num_actions, num_preferences, hidden_dim):
-        super(Critic, self).__init__()
+        # super(Critic, self).__init__()
         
         # Q1 architecture
         self.linear1 = nn.Linear(num_inputs + num_preferences + 1, hidden_dim)
@@ -75,7 +75,7 @@ class Critic(nn.Module):
 
 class Actor(nn.Module):
     def __init__(self, num_inputs, num_actions, num_preferences, hidden_dim, action_space=None):
-        super(Actor, self).__init__()
+        # super(Actor, self).__init__()
         
         self.linear1 = nn.Linear(num_inputs + num_preferences, hidden_dim)
         self.linear2 = nn.Linear(hidden_dim, hidden_dim)
@@ -110,6 +110,7 @@ class Actor(nn.Module):
     def to(self, device):
         return super(Actor, self).to(device)
 
+
 class SAC(nn.Module):
 
     def __init__(self, num_inputs, args):
@@ -121,7 +122,7 @@ class SAC(nn.Module):
         self.tau = args.tau
         self.alpha = args.alpha
         self.args = args
-        self.n_preferences = args.n_preferences
+        self.n_preferences = args.num_preferences
         self.policy_type = args.policy
         self.target_update_interval = args.target_update_interval
         self.automatic_entropy_tuning = args.automatic_entropy_tuning
@@ -138,10 +139,10 @@ class SAC(nn.Module):
 
         self.device = torch.device(device)
 
-        self.f_critic = FNetwork().to(self.device)
+        self.f_critic = FNetwork(self.num_inputs, self.n_preferences, 64).to(self.device)
         self.f_optim = Adam(self.f_critic.parameters())
 
-        self.critic = Critic().to(self.device)
+        self.critic = Critic(self.num_inputs, self.n_preferences, 64).to(self.device)
         self.critic_optim = Adam(self.critic.parameters())
 
         self.critic_target = Critic(num_inputs, self.action_space.n, 
@@ -149,7 +150,7 @@ class SAC(nn.Module):
        
         hard_update(self.critic_target, self.critic)
 
-        self.actor = Actor().to(self.device)
+        self.actor = Actor(self.num_inputs, self.n_preferences, 64).to(self.device)
         self.actor_optim = Adam(self.actor.parameters())
 
         return None
@@ -163,7 +164,6 @@ class SAC(nn.Module):
         else:
             _, _, action = self.actor.sample(state, preference)
         return action.detach().cpu().numpy()[0]
-    
     
     def divergance(self, pi, prior):
         return pi*torch.log((pi+1e-10)/(prior+1e-10))
@@ -191,7 +191,6 @@ class SAC(nn.Module):
 
         
         return preference_neigbor, next_preference_neigbor
-
 
     def update_parameters(self, memory, batch_size, updates):
         # Sample a batch from memory
@@ -256,7 +255,6 @@ class SAC(nn.Module):
             alpha_loss = torch.tensor(0.).to(self.device)
             alpha_tlogs = torch.tensor(self.alpha) # For TensorboardX logs
 
-
         if updates % self.target_update_interval == 0:
             soft_update(self.critic_target, self.critic, 1)
 
@@ -266,7 +264,6 @@ class SAC(nn.Module):
             self.f_optim.step()
 
             pi = self.policy.get_probs(state_batch, preference_batch)
-
         
             action_0 = torch.full(action_batch.shape, 0.).detach()
             action_1 = torch.full(action_batch.shape, 1.0).detach()
@@ -293,9 +290,7 @@ class SAC(nn.Module):
             if (0.1*updates) % self.target_update_interval == 0:
                 print(G1_loss.item(), G_loss.item(), policy_loss.item(), F_loss.item())
             
-
         return G1_loss.item(), G_loss.item(), policy_loss.item(), alpha_loss.item(), alpha_tlogs.item()
-
 
     # Save model parameters
     def save_checkpoint(self, env_name, suffix="", ckpt_path=None):
@@ -330,6 +325,4 @@ class SAC(nn.Module):
                 self.critic.train()
                 self.critic_target.train()
 
-
-    
     pass
