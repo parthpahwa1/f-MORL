@@ -190,7 +190,6 @@ class SAC(object):
         preference_neigbor = torch.cat((preference_neigbor, torch.FloatTensor(new_preference)), dim=0)
         next_preference_neigbor = torch.cat((next_preference_neigbor, torch.FloatTensor(new_next_preference)), dim=0)
 
-        
         return preference_neigbor, next_preference_neigbor
 
     def update_parameters(self, memory, batch_size, updates):

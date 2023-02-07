@@ -5,6 +5,9 @@ import numpy as np
 from pymoo.indicators.hv import HV
 from typing import List, Optional, Tuple, Union
 
+from pymoo.config import Config
+Config.warnings['not_compiled'] = False
+
 
 if  torch.cuda.is_available():
     device = torch.device("cuda")
@@ -70,10 +73,10 @@ def generate_next_preference_gaussian(preference, alpha=10000):
     
     return FloatTensor(new_next_preference)
 
-def train(agent, env, args, memory, writer):
-    rng = np.random.RandomState(123)
+def train(agent, env, memory, writer, args):
+    rng = np.random.RandomState(args.seed)
     prob_list = []
-    for i in range(1000):
+    for i in range(100):
         item = rng.rand(6)
         temp = torch.FloatTensor(item/sum(item)).flatten()
         prob_list.append(temp)
@@ -131,9 +134,12 @@ def train(agent, env, args, memory, writer):
         # print("Episode: {}, total numsteps: {}, episode steps: {}, reward: {}".format(i_episode, total_numsteps, episode_steps, round(episode_reward, 2)))
 
         if i_episode % 10 == 0 and args.eval is True:
+            
             avg_reward = 0.
             episodes = 10
+
             eval_reward = []
+            reward_list = []
             for _  in range(episodes):
                 for eval_probe in prob_list:
                     state, _ = env.reset()
@@ -147,24 +153,34 @@ def train(agent, env, args, memory, writer):
                         action = agent.select_action(state, eval_probe, evaluate=True)
                         next_state, reward, done, truncated, info = env.step(action)
                         eval_probe = eval_probe.clone().detach().cpu()
-
-                        eval_reward.append(np.dot(eval_probe, reward))
-                        # episode_reward += eval_probe.dot(FloatTensor(reward)).item()
+                        eval_reward.append(np.dot(eval_probe,reward))
+                        
+                        reward_list.append(reward)
 
                         state = next_state
-                
-                avg_reward += sum(eval_reward)/len(eval_reward)
-                # avg_reward += episode_reward
-            avg_reward /= episodes
 
+                avg_reward += sum(eval_reward)/len(eval_reward)
+            
+            avg_reward /= episodes
             writer.add_scalar('Test Average Reward', avg_reward, i_episode)
 
-            print("----------------------------------------")
-            print("Test Episodes: {}, Avg. Reward: {}, Value S0: {}, Value G0: {}, Value G1: {}"
-                  .format(i_episode, round(avg_reward, 2), 
-                          value_f0.detach().cpu().numpy(), 
-                          value_g0.detach().cpu().numpy(),
-                          value_g1.detach().cpu().numpy() ))
+            hyper = hypervolume(np.array([0,0,0,0,0,0]),reward_list)
+            writer.add_scalar('Hypervolume', hyper, i_episode)
+
+            print(
+                    "----------------------------------------"
+                    )
+            
+            print(
+                "Test Episodes: {}, Hyper Volume {}, Avg. Reward: {}, Value S0: {}, Value G0: {}, Value G1: {}"
+                .format(i_episode/10, 
+                        round(hyper,2),
+                        round(avg_reward, 2), 
+                        value_f0.detach().cpu().numpy(), 
+                        value_g0.detach().cpu().numpy(),
+                        value_g1.detach().cpu().numpy()
+                        )
+                    )
             print("----------------------------------------")
 
     env.close()

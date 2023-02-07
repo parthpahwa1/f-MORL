@@ -20,24 +20,24 @@ parser.add_argument('--eval', type=bool, default=True,
                     help='Evaluates a policy a policy every 10 episode (default: True)')
 parser.add_argument('--gamma', type=float, default=0.99, metavar='G',
                     help='discount factor for reward (default: 0.99)')
-parser.add_argument('--tau', type=float, default=0.1, metavar='G',
+parser.add_argument('--tau', type=float, default=0.005, metavar='G',
                     help='target smoothing coefficient(τ) (default: 0.005)')
-parser.add_argument('--lr', type=float, default=0.001, metavar='G',
+parser.add_argument('--lr', type=float, default=0.0003, metavar='G',
                     help='learning rate (default: 0.0003)')
 parser.add_argument('--alpha', type=float, default=0.2, metavar='G',
                     help='Temperature parameter α determines the relative importance of the entropy\
                             term against the reward (default: 0.2)')
 parser.add_argument('--automatic_entropy_tuning', type=bool, default=False, metavar='G',
                     help='Automaically adjust α (default: False)')
-parser.add_argument('--seed', type=int, default=123456, metavar='N',
+parser.add_argument('--seed', type=int, default=123, metavar='N',
                     help='random seed (default: 123456)')
-parser.add_argument('--batch_size', type=int, default=64, metavar='N',
+parser.add_argument('--batch_size', type=int, default=32, metavar='N',
                     help='batch size (default: 256)')
 parser.add_argument('--num_steps', type=int, default=640000, metavar='N',
                     help='maximum number of steps (default: 1000000)')
 parser.add_argument('--num_episodes', type=int, default=1, metavar='N',
                     help='maximum number of episodes (default: 1)')
-parser.add_argument('--hidden_size', type=int, default=32, metavar='N',
+parser.add_argument('--hidden_size', type=int, default=256, metavar='N',
                     help='hidden size (default: 256)')
 parser.add_argument('--updates_per_step', type=int, default=2, metavar='N',
                     help='model updates per simulator step (default: 1)')
@@ -91,4 +91,4 @@ writer = SummaryWriter('./runs/{}_SAC_{}_{}_{}'.format(datetime.datetime.now().s
 memory = ReplayMemory(args.replay_size,  args.gamma, args.seed)
 
 
-train(agent, env, args, memory, writer)
+train(agent, env, memory, writer, args)
