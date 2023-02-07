@@ -83,7 +83,7 @@ args.num_inputs= env.observation_space.shape[0]
 args.num_preferences = 6
 args.num_weights = 1
 
-agent = SAC(args.num_inputs, args).to(device)
+agent = SAC(args.num_inputs, args)
 
 writer = SummaryWriter('./runs/{}_SAC_{}_{}_{}'.format(datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S"), args.env_name,
                                                              args.policy, "autotune" if args.automatic_entropy_tuning else ""))
@@ -94,6 +94,6 @@ memory = ReplayMemory(args.replay_size,  args.gamma, args.seed)
 total_numsteps = 0
 updates = 0
 
-fixed_probe = FloatTensor([0.8, 0.2, 0.0, 0.0, 0.0, 0.0])
+# fixed_probe = FloatTensor([0.8, 0.2, 0.0, 0.0, 0.0, 0.0])
 
-# train(agent, env, args, memory, writer)
+train(agent, env, args, memory, writer)

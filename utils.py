@@ -40,8 +40,6 @@ def soft_update(target, source, tau):
 def hard_update(target, source):
     for target_param, param in zip(target.parameters(), source.parameters()):
         target_param.data.copy_(param.data)
-        
-
 
 def generate_next_preference(preference, alpha=10000):
     preference = np.array(preference)
@@ -59,12 +57,12 @@ def generate_next_preference_gaussian(preference, alpha=10000):
     
     return FloatTensor(new_next_preference)
 
-
 def train(agent, env, args, memory, writer):
     for i_episode in itertools.count(args.num_episodes):
         episode_reward = 0
         episode_steps = 0
         total_numsteps = 0
+        updates = 0
 
         done = False
         state, _ = env.reset()
@@ -98,6 +96,7 @@ def train(agent, env, args, memory, writer):
             
                 episode_steps += 1
             total_numsteps += 1
+
             episode_reward += probe.dot(FloatTensor(reward)).item()
             
             mask = 1 if episode_steps == 20 else float(not done)
