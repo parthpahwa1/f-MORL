@@ -58,6 +58,8 @@ def generate_next_preference_gaussian(preference, alpha=10000):
     return FloatTensor(new_next_preference)
 
 def train(agent, env, args, memory, writer):
+    eval_probe = FloatTensor(np.array([0.8, 0.2, 0, 0, 0, 0]))
+
     total_numsteps = 0
     updates = 0
     for i_episode in itertools.count(args.num_episodes):
@@ -68,25 +70,24 @@ def train(agent, env, args, memory, writer):
         state, _ = env.reset()
         
         probe = np.random.randn(6)
-        probe = generate_next_preference(np.abs(probe)/np.linalg.norm(probe, ord=1), alpha=1)
+        probe = generate_next_preference(np.abs(probe)/np.linalg.norm(probe, ord=1), alpha=args.alpha)
 
         while not done and episode_steps < 500 and i_episode < 4000:
             action = agent.select_action(state, probe, (i_episode+1)%2==0)  # Sample action from policy
 
             if (total_numsteps+1)%2==0:
                 action = np.random.randint(0, 2)
-            
+                        
             if len(memory) > args.batch_size:
                 # Number of updates per step in environment
                 for i in range(args.updates_per_step):
+                    critic_1_loss, critic_2_loss, policy_loss, ent_loss, args.alpha = agent.update_parameters(memory, args.batch_size, updates)
                     # Update parameters of all the networks
-                    critic_1_loss, critic_2_loss, policy_loss, ent_loss, alpha = agent.update_parameters(memory, args.batch_size, updates)
-
                     writer.add_scalar('loss/critic_1', critic_1_loss, updates)
                     writer.add_scalar('loss/critic_2', critic_2_loss, updates)
                     writer.add_scalar('loss/policy', policy_loss, updates)
                     writer.add_scalar('loss/entropy_loss', ent_loss, updates)
-                    writer.add_scalar('entropy_temprature/alpha', alpha, updates)
+                    writer.add_scalar('entropy_temprature/alpha', args.alpha, updates)
                     updates += 1
 
             next_state, reward, done, truncated, info = env.step(action) # Step
@@ -116,32 +117,29 @@ def train(agent, env, args, memory, writer):
             episodes = 10
             for _  in range(episodes):
                 state, _ = env.reset()
-                value_f0 = agent.f_critic(torch.FloatTensor(state.reshape(1,-1)), probe.reshape(1,-1))
-                value_g0 = agent.critic_target(torch.FloatTensor(state.reshape(1,-1)), probe.reshape(1,-1), torch.FloatTensor(np.array([[0.0]])))[0]
-                value_g1 = agent.critic_target(torch.FloatTensor(state.reshape(1,-1)), probe.reshape(1,-1), torch.FloatTensor(np.array([[1.0]])))[0]
+                value_f0 = agent.f_critic(torch.FloatTensor(state.reshape(1,-1)), eval_probe.reshape(1,-1))
+                value_g0 = agent.critic_target(torch.FloatTensor(state.reshape(1,-1)), eval_probe.reshape(1,-1), torch.FloatTensor(np.array([[0.0]])))[0]
+                value_g1 = agent.critic_target(torch.FloatTensor(state.reshape(1,-1)), eval_probe.reshape(1,-1), torch.FloatTensor(np.array([[1.0]])))[0]
                 episode_reward = 0
                 done = False
                 while not done:
-                    action = agent.select_action(state, probe, evaluate=True)
-                    # print(agent.policy.get_probs(torch.FloatTensor(state.reshape(1,-1)), fixed_probe.reshape(1,-1)))
+                    action = agent.select_action(state, eval_probe, evaluate=True)
                     next_state, reward, done, truncated, info = env.step(action)
 
-                    # if done == True:
-                    #     print(state, agent.f_critic(torch.FloatTensor(state.reshape(1,-1))))
-
-                    # if reward[0] > 6:
-                    #     print('Evaluation:', reward)
-                    
-                    episode_reward += probe.dot(FloatTensor(reward)).item()
+                    episode_reward += eval_probe.dot(FloatTensor(reward)).item()
 
                     state = next_state
                 avg_reward += episode_reward
             avg_reward /= episodes
 
-            writer.add_scalar('avg_reward/test', avg_reward, i_episode)
+            writer.add_scalar('Test Average Reward', avg_reward, i_episode)
 
             print("----------------------------------------")
-            print("Test Episodes: {}, Avg. Reward: {}, Value S0: {}, Value G0: {}, Value G1: {}".format(episodes, round(avg_reward, 2), value_f0.detach().cpu().numpy(), value_g0.detach().cpu().numpy(), value_g1.detach().cpu().numpy() ))
+            print("Test Episodes: {}, Avg. Reward: {}, Value S0: {}, Value G0: {}, Value G1: {}"
+                  .format(i_episode, round(avg_reward, 2), 
+                          value_f0.detach().cpu().numpy(), 
+                          value_g0.detach().cpu().numpy(),
+                          value_g1.detach().cpu().numpy() ))
             print("----------------------------------------")
 
     env.close()

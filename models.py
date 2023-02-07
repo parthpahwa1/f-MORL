@@ -120,11 +120,10 @@ class SAC(object):
 
         self.num_inputs = num_inputs
 
+        self.args = args
         self.action_space = args.action_space
         self.gamma = args.gamma
         self.tau = args.tau
-        self.alpha = args.alpha
-        self.args = args
         self.n_preferences = args.num_preferences
         self.policy_type = args.policy
         self.target_update_interval = args.target_update_interval
