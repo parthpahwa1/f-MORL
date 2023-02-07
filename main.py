@@ -1,10 +1,8 @@
-import os 
-import itertools
 import argparse
 import datetime
 import numpy as np
 from utils import *
-from models import *
+from sac import *
 from replay_memory import *
 import mo_gym
 
@@ -81,10 +79,11 @@ env = mo_gym.make(args.env_name)
 env.reset()
 
 args.action_space = env.action_space
-args.num_preferences = env.observation_space.shape[0]
+args.num_inputs= env.observation_space.shape[0]
+args.num_preferences = 6
 args.num_weights = 1
 
-agent = SAC(args.num_preferences, args)
+agent = SAC(args.num_inputs, args).to(device)
 
 writer = SummaryWriter('./runs/{}_SAC_{}_{}_{}'.format(datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S"), args.env_name,
                                                              args.policy, "autotune" if args.automatic_entropy_tuning else ""))
@@ -97,4 +96,4 @@ updates = 0
 
 fixed_probe = FloatTensor([0.8, 0.2, 0.0, 0.0, 0.0, 0.0])
 
-train(agent, env, args, memory, writer)
+# train(agent, env, args, memory, writer)
