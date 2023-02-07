@@ -1,9 +1,11 @@
 import os 
+import itertools
 import argparse
 import datetime
 import numpy as np
 from utils import *
 from models import *
+from replay_memory import *
 import mo_gym
 
 import torch
@@ -13,7 +15,7 @@ from torch.utils.tensorboard import SummaryWriter
 
 parser = argparse.ArgumentParser(description='PyTorch Soft Actor-Critic Args')
 parser.add_argument('--env-name', default="fruit-tree-v0",
-                    help='Mujoco Gym environment (default: HalfCheetah-v2)')
+                    help='MOGYM enviroment (default: fruit-tree-v0)')
 parser.add_argument('--policy', default="Gaussian",
                     help='Policy Type: Gaussian | Deterministic (default: Gaussian)')
 parser.add_argument('--eval', type=bool, default=True,
@@ -35,6 +37,8 @@ parser.add_argument('--batch_size', type=int, default=64, metavar='N',
                     help='batch size (default: 256)')
 parser.add_argument('--num_steps', type=int, default=640000, metavar='N',
                     help='maximum number of steps (default: 1000000)')
+parser.add_argument('--num_episodes', type=int, default=1, metavar='N',
+                    help='maximum number of episodes (default: 1)')
 parser.add_argument('--hidden_size', type=int, default=32, metavar='N',
                     help='hidden size (default: 256)')
 parser.add_argument('--updates_per_step', type=int, default=2, metavar='N',
@@ -74,6 +78,7 @@ else:
     Tensor = FloatTensor
 
 env = mo_gym.make(args.env_name)
+env.reset()
 
 args.action_space = env.action_space
 args.num_preferences = env.observation_space.shape[0]
@@ -81,3 +86,15 @@ args.num_weights = 1
 
 agent = SAC(args.num_preferences, args)
 
+writer = SummaryWriter('./runs/{}_SAC_{}_{}_{}'.format(datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S"), args.env_name,
+                                                             args.policy, "autotune" if args.automatic_entropy_tuning else ""))
+
+memory = ReplayMemory(args.replay_size,  args.gamma, args.seed)
+
+# Training Loop
+total_numsteps = 0
+updates = 0
+
+fixed_probe = FloatTensor([0.8, 0.2, 0.0, 0.0, 0.0, 0.0])
+
+train(agent, env, args, memory, writer)

@@ -1,5 +1,19 @@
 import math
 import torch
+import itertools
+import numpy as np
+
+if  torch.cuda.is_available():
+    device = torch.device("cuda")
+    FloatTensor = torch.cuda.FloatTensor 
+    LongTensor = torch.cuda.LongTensor 
+    ByteTensor = torch.cuda.ByteTensor 
+    Tensor = FloatTensor
+else:
+    FloatTensor = torch.FloatTensor 
+    LongTensor = torch.LongTensor 
+    ByteTensor = torch.ByteTensor 
+    Tensor = FloatTensor
 
 def create_log_gaussian(mean, log_std, t):
     quadratic = -((0.5 * (t - mean) / (log_std.exp())).pow(2))
@@ -27,3 +41,108 @@ def hard_update(target, source):
     for target_param, param in zip(target.parameters(), source.parameters()):
         target_param.data.copy_(param.data)
         
+
+
+def generate_next_preference(preference, alpha=10000):
+    preference = np.array(preference)
+    preference += 1e-6
+    
+    return FloatTensor(np.random.dirichlet(alpha*preference))
+
+def generate_next_preference_gaussian(preference, alpha=10000):
+    
+    cov = np.identity(preference.shape[0])*0.000001*alpha
+    new_next_preference = np.random.multivariate_normal(preference, cov, 1)[0]
+    new_next_preference[new_next_preference < 0] = 0
+    new_next_preference += 1e-9
+    new_next_preference = new_next_preference/np.sum(new_next_preference)
+    
+    return FloatTensor(new_next_preference)
+
+
+def train(agent, env, args, memory, writer):
+    for i_episode in itertools.count(args.num_episodes):
+        episode_reward = 0
+        episode_steps = 0
+        total_numsteps = 0
+
+        done = False
+        state, _ = env.reset()
+        
+        probe = np.random.randn(6)
+        probe = generate_next_preference(np.abs(probe)/np.linalg.norm(probe, ord=1), alpha=1)
+
+        while not done and episode_steps < 500 and i_episode < 4000:
+            action = agent.select_action(state, probe, (i_episode+1)%2==0)  # Sample action from policy
+
+            if (total_numsteps+1)%2==0:
+                action = np.random.randint(0, 2)
+            
+            if len(memory) > args.batch_size:
+                # Number of updates per step in environment
+                for i in range(args.updates_per_step):
+                    # Update parameters of all the networks
+                    critic_1_loss, critic_2_loss, policy_loss, ent_loss, alpha = agent.update_parameters(memory, args.batch_size, updates)
+
+                    writer.add_scalar('loss/critic_1', critic_1_loss, updates)
+                    writer.add_scalar('loss/critic_2', critic_2_loss, updates)
+                    writer.add_scalar('loss/policy', policy_loss, updates)
+                    writer.add_scalar('loss/entropy_loss', ent_loss, updates)
+                    writer.add_scalar('entropy_temprature/alpha', alpha, updates)
+                    updates += 1
+
+            next_state, reward, done, truncated, info = env.step(action) # Step
+            
+            if reward[0] > 6:
+                print('Training:', reward, 'probe:', probe)
+            
+                episode_steps += 1
+            total_numsteps += 1
+            episode_reward += probe.dot(FloatTensor(reward)).item()
+            
+            mask = 1 if episode_steps == 20 else float(not done)
+
+            memory.push(state, probe, action, reward, next_state, probe, mask, agent) # Append transition to memory
+
+            state = next_state
+
+        if total_numsteps > args.num_steps or i_episode >= 4000:
+            break
+
+        writer.add_scalar('reward/train', episode_reward, i_episode)
+        print("Episode: {}, total numsteps: {}, episode steps: {}, reward: {}".format(i_episode, total_numsteps, episode_steps, round(episode_reward, 2)))
+
+        if i_episode % 10 == 0 and args.eval is True:
+            avg_reward = 0.
+            episodes = 10
+            for _  in range(episodes):
+                state, _ = env.reset()
+                value_f0 = agent.f_critic(torch.FloatTensor(state.reshape(1,-1)), probe.reshape(1,-1))
+                value_g0 = agent.critic_target(torch.FloatTensor(state.reshape(1,-1)), probe.reshape(1,-1), torch.FloatTensor(np.array([[0.0]])))[0]
+                value_g1 = agent.critic_target(torch.FloatTensor(state.reshape(1,-1)), probe.reshape(1,-1), torch.FloatTensor(np.array([[1.0]])))[0]
+                episode_reward = 0
+                done = False
+                while not done:
+                    action = agent.select_action(state, probe, evaluate=True)
+                    # print(agent.policy.get_probs(torch.FloatTensor(state.reshape(1,-1)), fixed_probe.reshape(1,-1)))
+                    next_state, reward, done, truncated, info = env.step(action)
+
+                    # if done == True:
+                    #     print(state, agent.f_critic(torch.FloatTensor(state.reshape(1,-1))))
+
+                    if reward[0] > 6:
+                        print('Evaluation:', reward)
+                    
+                    episode_reward += probe.dot(FloatTensor(reward)).item()
+
+                    state = next_state
+                avg_reward += episode_reward
+            avg_reward /= episodes
+
+            writer.add_scalar('avg_reward/test', avg_reward, i_episode)
+
+            print("----------------------------------------")
+            print("Test Episodes: {}, Avg. Reward: {}, Value S0: {}, Value G0: {}, Value G1: {}".format(episodes, round(avg_reward, 2), value_f0.detach().cpu().numpy(), value_g0.detach().cpu().numpy(), value_g1.detach().cpu().numpy() ))
+            print("----------------------------------------")
+
+    env.close()
