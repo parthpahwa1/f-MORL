@@ -80,7 +80,7 @@ def train(agent, env, memory, writer, args):
 
     total_numsteps = 0
     updates = 0
-    for i_episode in itertools.count(args.num_episodes):
+    for i_episode in range(args.num_episodes):
         episode_reward = 0
         episode_steps = 0
 
@@ -137,7 +137,7 @@ def train(agent, env, memory, writer, args):
 
             eval_reward = []
             reward_list = []
-            
+
             for _  in range(episodes):
                 for eval_probe in prob_list:
                     state, _ = env.reset()
@@ -151,23 +151,23 @@ def train(agent, env, memory, writer, args):
                         action = agent.select_action(state, eval_probe, evaluate=True)
                         next_state, reward, done, truncated, info = env.step(action)
                         eval_probe = eval_probe.clone().detach().cpu()
-                        eval_reward.append(np.dot(eval_probe,reward))
+                        eval_reward.append(np.dot(eval_probe, reward))
                         
                         reward_list.append(reward)
 
                         state = next_state
 
                 avg_reward += sum(eval_reward)/len(eval_reward)
-                # avg_reward /= episodes
-            
-            writer.add_scalar('Test Average Reward', avg_reward, i_episode)
-
+        
             hyper = hypervolume(np.array([0,0,0,0,0,0]), reward_list)
+
+            writer.add_scalar('Test Average Reward', avg_reward, i_episode)
             writer.add_scalar('Hypervolume', hyper, i_episode)
 
             print(
                     "----------------------------------------"
                     )
+            
             # , Value S0: {}, Value G0: {}, Value G1: {}
             print(
                 "Episode Count: {}; \nHyper Volume: {}; \nAvg. Reward: {}."
