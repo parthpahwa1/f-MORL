@@ -90,10 +90,5 @@ writer = SummaryWriter('./runs/{}_SAC_{}_{}_{}'.format(datetime.datetime.now().s
 
 memory = ReplayMemory(args.replay_size,  args.gamma, args.seed)
 
-# Training Loop
-total_numsteps = 0
-updates = 0
-
-# fixed_probe = FloatTensor([0.8, 0.2, 0.0, 0.0, 0.0, 0.0])
 
 train(agent, env, args, memory, writer)

@@ -59,10 +59,10 @@ def generate_next_preference_gaussian(preference, alpha=10000):
 
 def train(agent, env, args, memory, writer):
     total_numsteps = 0
+    updates = 0
     for i_episode in itertools.count(args.num_episodes):
         episode_reward = 0
         episode_steps = 0
-        updates = 0
 
         done = False
         state, _ = env.reset()
