@@ -18,6 +18,8 @@ class ReplayMemory:
             self.buffer.append(None)
             self.priority_mem.append(None)
 
+        self.position = int(self.position)
+
         self.buffer[self.position] = (state, preference, action, reward, next_state, next_preference, done)
 
         Q_val = agent.critic_target(torch.FloatTensor(state.reshape(1,-1)), preference.reshape(1,-1), torch.FloatTensor(np.array([[action]])))[0]

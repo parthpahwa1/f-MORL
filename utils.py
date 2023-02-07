@@ -109,15 +109,12 @@ def train(agent, env, memory, writer, args):
                     updates += 1
 
             next_state, reward, done, truncated, info = env.step(action) # Step
-            
-            # if reward[0] > 6:
-            #     print('Training:', reward, 'probe:', probe)
-            
+
             episode_steps += 1
             total_numsteps += 1
 
             episode_reward += probe.dot(FloatTensor(reward)).item()
-            
+
             mask = 1 if episode_steps == 20 else float(not done)
 
             memory.push(state, probe, action, reward, next_state, probe, mask, agent) # Append transition to memory
@@ -131,7 +128,6 @@ def train(agent, env, memory, writer, args):
         # print("Episode: {}, total numsteps: {}, episode steps: {}, reward: {}".format(i_episode, total_numsteps, episode_steps, round(episode_reward, 2)))
 
         if i_episode % 10 == 0 and args.eval is True:
-            
             avg_reward = 0.
             episodes = 10
 
@@ -158,7 +154,7 @@ def train(agent, env, memory, writer, args):
                         state = next_state
 
                 avg_reward += sum(eval_reward)/len(eval_reward)
-        
+
             hyper = hypervolume(np.array([0,0,0,0,0,0]), reward_list)
 
             writer.add_scalar('Test Average Reward', avg_reward, i_episode)
@@ -167,7 +163,7 @@ def train(agent, env, memory, writer, args):
             print(
                     "----------------------------------------"
                     )
-            
+
             # , Value S0: {}, Value G0: {}, Value G1: {}
             print(
                 "Episode Count: {}; \nHyper Volume: {}; \nAvg. Reward: {}."
