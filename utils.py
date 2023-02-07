@@ -2,6 +2,9 @@ import math
 import torch
 import itertools
 import numpy as np
+from pymoo.indicators.hv import HV
+from typing import List, Optional, Tuple, Union
+
 
 if  torch.cuda.is_available():
     device = torch.device("cuda")
@@ -14,6 +17,16 @@ else:
     LongTensor = torch.LongTensor 
     ByteTensor = torch.ByteTensor 
     Tensor = FloatTensor
+
+def hypervolume(ref_point: np.ndarray, points: List[np.ndarray]) -> float:
+    """Computes the hypervolume metric for a set of points (value vectors) and a reference point.
+    Args:
+        ref_point (np.ndarray): Reference point
+        points (List[np.ndarray]): List of value vectors
+    Returns:
+        float: Hypervolume metric
+    """
+    return HV(ref_point=ref_point * -1)(np.array(points) * -1)
 
 def create_log_gaussian(mean, log_std, t):
     quadratic = -((0.5 * (t - mean) / (log_std.exp())).pow(2))
@@ -58,7 +71,12 @@ def generate_next_preference_gaussian(preference, alpha=10000):
     return FloatTensor(new_next_preference)
 
 def train(agent, env, args, memory, writer):
-    eval_probe = FloatTensor(np.array([0.8, 0.2, 0, 0, 0, 0]))
+    rng = np.random.RandomState(123)
+    prob_list = []
+    for i in range(1000):
+        item = rng.rand(6)
+        temp = torch.FloatTensor(item/sum(item)).flatten()
+        prob_list.append(temp)
 
     total_numsteps = 0
     updates = 0
@@ -115,21 +133,28 @@ def train(agent, env, args, memory, writer):
         if i_episode % 10 == 0 and args.eval is True:
             avg_reward = 0.
             episodes = 10
+            eval_reward = []
             for _  in range(episodes):
-                state, _ = env.reset()
-                value_f0 = agent.f_critic(torch.FloatTensor(state.reshape(1,-1)), eval_probe.reshape(1,-1))
-                value_g0 = agent.critic_target(torch.FloatTensor(state.reshape(1,-1)), eval_probe.reshape(1,-1), torch.FloatTensor(np.array([[0.0]])))[0]
-                value_g1 = agent.critic_target(torch.FloatTensor(state.reshape(1,-1)), eval_probe.reshape(1,-1), torch.FloatTensor(np.array([[1.0]])))[0]
-                episode_reward = 0
-                done = False
-                while not done:
-                    action = agent.select_action(state, eval_probe, evaluate=True)
-                    next_state, reward, done, truncated, info = env.step(action)
+                for eval_probe in prob_list:
+                    state, _ = env.reset()
+                    value_f0 = agent.f_critic(torch.FloatTensor(state.reshape(1,-1)), eval_probe.reshape(1,-1))
+                    value_g0 = agent.critic_target(torch.FloatTensor(state.reshape(1,-1)), eval_probe.reshape(1,-1), torch.FloatTensor(np.array([[0.0]])))[0]
+                    value_g1 = agent.critic_target(torch.FloatTensor(state.reshape(1,-1)), eval_probe.reshape(1,-1), torch.FloatTensor(np.array([[1.0]])))[0]
+                    # episode_reward = 0
 
-                    episode_reward += eval_probe.dot(FloatTensor(reward)).item()
+                    done = False
+                    while not done:
+                        action = agent.select_action(state, eval_probe, evaluate=True)
+                        next_state, reward, done, truncated, info = env.step(action)
+                        eval_probe = eval_probe.clone().detach().cpu()
 
-                    state = next_state
-                avg_reward += episode_reward
+                        eval_reward.append(np.dot(eval_probe, reward))
+                        # episode_reward += eval_probe.dot(FloatTensor(reward)).item()
+
+                        state = next_state
+                
+                avg_reward += sum(eval_reward)/len(eval_reward)
+                # avg_reward += episode_reward
             avg_reward /= episodes
 
             writer.add_scalar('Test Average Reward', avg_reward, i_episode)
