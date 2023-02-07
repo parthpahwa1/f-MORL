@@ -76,7 +76,7 @@ def generate_next_preference_gaussian(preference, alpha=0.2):
 def train(agent, env, memory, writer, args):
     rng = np.random.RandomState(args.seed)
     prob_list = rng.rand(1000, args.num_preferences)
-    prob_list = [torch.FloatTensor(item) for item in prob_list]
+    prob_list = [torch.FloatTensor(item/sum(item)) for item in prob_list]
 
     total_numsteps = 0
     updates = 0
@@ -155,6 +155,7 @@ def train(agent, env, memory, writer, args):
 
                 avg_reward += sum(eval_reward)/len(eval_reward)
 
+            avg_reward = avg_reward/len(prob_list)
             hyper = hypervolume(np.array([0,0,0,0,0,0]), reward_list)
 
             writer.add_scalar('Test Average Reward', avg_reward, i_episode)
