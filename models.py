@@ -76,7 +76,8 @@ class GaussianPolicy(nn.Module):
         super(GaussianPolicy, self).__init__()
         
         self.linear1 = nn.Linear(num_inputs + num_preferences, hidden_dim)
-        self.linear2 = nn.Linear(hidden_dim, hidden_dim)
+        self.linear2a = nn.Linear(hidden_dim, hidden_dim)
+        self.linear2b = nn.Linear(hidden_dim, hidden_dim)
 
         self.mean_linear = nn.Linear(hidden_dim, num_actions)
 
@@ -87,8 +88,8 @@ class GaussianPolicy(nn.Module):
     def forward(self, state, preference):
         input = torch.cat([state, preference], 1)
         x = F.relu(self.linear1(input))
-        x = F.relu(self.linear2(x))
-        # x = F.relu(self.linear3(x))
+        x = F.relu(self.linear2a(x))
+        x = F.relu(self.linear2b(x))
         # x = F.relu(self.linear4(x))
         # x = F.relu(self.linear5(x))
         mean = self.mean_linear(x)

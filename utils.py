@@ -57,13 +57,13 @@ def hard_update(target, source):
     for target_param, param in zip(target.parameters(), source.parameters()):
         target_param.data.copy_(param.data)
 
-def generate_next_preference(preference, alpha=10000):
+def generate_next_preference(preference, alpha=0.2):
     preference = np.array(preference)
     preference += 1e-6
     
     return FloatTensor(np.random.dirichlet(alpha*preference))
 
-def generate_next_preference_gaussian(preference, alpha=10000):
+def generate_next_preference_gaussian(preference, alpha=0.2):
     
     cov = np.identity(preference.shape[0])*0.000001*alpha
     new_next_preference = np.random.multivariate_normal(preference, cov, 1)[0]
@@ -75,11 +75,8 @@ def generate_next_preference_gaussian(preference, alpha=10000):
 
 def train(agent, env, memory, writer, args):
     rng = np.random.RandomState(args.seed)
-    prob_list = []
-    for i in range(100):
-        item = rng.rand(6)
-        temp = torch.FloatTensor(item/sum(item)).flatten()
-        prob_list.append(temp)
+    prob_list = rng.rand(100, args.num_preferences)
+    prob_list = [torch.FloatTensor(item) for item in prob_list]
 
     total_numsteps = 0
     updates = 0
@@ -107,7 +104,7 @@ def train(agent, env, memory, writer, args):
                     writer.add_scalar('loss/critic_1', critic_1_loss, updates)
                     writer.add_scalar('loss/critic_2', critic_2_loss, updates)
                     writer.add_scalar('loss/policy', policy_loss, updates)
-                    writer.add_scalar('loss/entropy_loss', ent_loss, updates)
+                    # writer.add_scalar('loss/entropy_loss', ent_loss, updates)
                     writer.add_scalar('entropy_temprature/alpha', args.alpha, updates)
                     updates += 1
 
@@ -140,6 +137,7 @@ def train(agent, env, memory, writer, args):
 
             eval_reward = []
             reward_list = []
+            
             for _  in range(episodes):
                 for eval_probe in prob_list:
                     state, _ = env.reset()
@@ -160,27 +158,27 @@ def train(agent, env, memory, writer, args):
                         state = next_state
 
                 avg_reward += sum(eval_reward)/len(eval_reward)
+                # avg_reward /= episodes
             
-            avg_reward /= episodes
             writer.add_scalar('Test Average Reward', avg_reward, i_episode)
 
-            hyper = hypervolume(np.array([0,0,0,0,0,0]),reward_list)
+            hyper = hypervolume(np.array([0,0,0,0,0,0]), reward_list)
             writer.add_scalar('Hypervolume', hyper, i_episode)
 
             print(
                     "----------------------------------------"
                     )
-            
+            # , Value S0: {}, Value G0: {}, Value G1: {}
             print(
-                "Test Episodes: {}, Hyper Volume {}, Avg. Reward: {}, Value S0: {}, Value G0: {}, Value G1: {}"
-                .format(i_episode/10, 
+                "Episode Count: {}; \nHyper Volume: {}; \nAvg. Reward: {}."
+                .format(i_episode, 
                         round(hyper,2),
                         round(avg_reward, 2), 
-                        value_f0.detach().cpu().numpy(), 
-                        value_g0.detach().cpu().numpy(),
-                        value_g1.detach().cpu().numpy()
+                        # float(value_f0.detach().cpu().numpy()), 
+                        # float(value_g0.detach().cpu().numpy()),
+                        # float(value_g1.detach().cpu().numpy())
                         )
                     )
             print("----------------------------------------")
 
-    env.close()
+        env.close()
