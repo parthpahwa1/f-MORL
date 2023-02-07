@@ -2,7 +2,7 @@ import argparse
 import datetime
 import numpy as np
 from utils import *
-from sac import *
+from models import *
 from replay_memory import *
 import mo_gym
 

@@ -1,6 +1,5 @@
 import os
 import numpy as np
-from base_models import *
 from utils import hard_update, soft_update
 
 import torch
@@ -18,10 +17,107 @@ def weights_init_(m):
         torch.nn.init.xavier_uniform_(m.weight, gain=1)
         torch.nn.init.constant_(m.bias, 0)
 
+class F_Network(nn.Module):
+    def __init__(self, num_inputs, num_preferences, hidden_dim):
+        super(F_Network, self).__init__()
+
+        self.linear1 = nn.Linear(num_inputs+num_preferences, hidden_dim)
+        self.linear2 = nn.Linear(hidden_dim, hidden_dim)
+        self.linear2a = nn.Linear(hidden_dim, hidden_dim)
+        self.linear3 = nn.Linear(hidden_dim, 1)
+
+        self.apply(weights_init_)
+
+    def forward(self, state, preference):
+        input = torch.cat([state, preference], 1)
+        x = F.relu(self.linear1(input))
+        x = F.relu(self.linear2(x))
+        x = F.relu(self.linear2a(x))
+        x = self.linear3(x)
+        return x
+
+
+class G_Network(nn.Module):
+    def __init__(self, num_inputs, num_actions, num_preferences, hidden_dim):
+        super(G_Network, self).__init__()
+        
+        # Q1 architecture
+        self.linear1 = nn.Linear(num_inputs + num_preferences + 1, hidden_dim)
+        self.linear2 = nn.Linear(hidden_dim, hidden_dim)
+        self.linear2_a = nn.Linear(hidden_dim, hidden_dim)
+        self.linear3 = nn.Linear(hidden_dim, 1)
+
+        # Q2 architecture
+        self.linear4 = nn.Linear(num_inputs + num_preferences + 1, hidden_dim)
+        self.linear5 = nn.Linear(hidden_dim, hidden_dim)
+        self.linear5_a = nn.Linear(hidden_dim, hidden_dim)
+        self.linear6 = nn.Linear(hidden_dim, 1)
+
+        self.apply(weights_init_)
+
+    def forward(self, state, preference, action):
+        xu = torch.cat([state, preference, action], 1)
+        
+        x1 = F.relu(self.linear1(xu))
+        x1 = F.relu(self.linear2(x1))
+        x1 = F.relu(self.linear2_a(x1))
+        x1 = self.linear3(x1)
+        
+        x2 = F.relu(self.linear4(xu))
+        x2 = F.relu(self.linear5(x2))
+        x2 = F.relu(self.linear5_a(x2))
+        x2 = self.linear6(x2)
+
+        return x1, x2
+
+
+class GaussianPolicy(nn.Module):
+    def __init__(self, num_inputs, num_actions, num_preferences, hidden_dim, action_space=None):
+        super(GaussianPolicy, self).__init__()
+        
+        self.linear1 = nn.Linear(num_inputs + num_preferences, hidden_dim)
+        self.linear2 = nn.Linear(hidden_dim, hidden_dim)
+
+        self.mean_linear = nn.Linear(hidden_dim, num_actions)
+
+        self.apply(weights_init_)
+
+        return None
+
+    def forward(self, state, preference):
+        input = torch.cat([state, preference], 1)
+        x = F.relu(self.linear1(input))
+        x = F.relu(self.linear2(x))
+        # x = F.relu(self.linear3(x))
+        # x = F.relu(self.linear4(x))
+        # x = F.relu(self.linear5(x))
+        mean = self.mean_linear(x)
+        return mean
+
+    def get_probs(self, state, preference):
+        mean = self.forward(state, preference)
+        probs = torch.softmax(mean, dim=1)
+        return probs
+
+    def sample(self, state, preference):
+        mean = self.forward(state, preference)
+        probs = torch.softmax(mean, dim=1)
+        m = torch.distributions.Categorical(probs)
+        
+        action = m.sample()
+        log_prob = m.log_prob(action)
+
+        return action.reshape(-1), log_prob, torch.argmax(probs, dim=1).reshape(-1)
+
+    def to(self, device):
+        return super(GaussianPolicy, self).to(device)
+
+
 class SAC(nn.Module):
 
     def __init__(self, num_inputs, args):
-        
+        super().__init__()
+
         self.num_inputs = num_inputs
 
         self.action_space = args.action_space
