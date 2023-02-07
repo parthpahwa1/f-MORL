@@ -75,12 +75,13 @@ def generate_next_preference_gaussian(preference, alpha=0.2):
 
 def train(agent, env, memory, writer, args):
     rng = np.random.RandomState(args.seed)
-    prob_list = rng.rand(100, args.num_preferences)
+    prob_list = rng.rand(1000, args.num_preferences)
     prob_list = [torch.FloatTensor(item) for item in prob_list]
 
     total_numsteps = 0
     updates = 0
     for i_episode in range(args.num_episodes):
+
         episode_reward = 0
         episode_steps = 0
 
@@ -90,9 +91,10 @@ def train(agent, env, memory, writer, args):
         probe = np.random.randn(6)
         probe = generate_next_preference(np.abs(probe)/np.linalg.norm(probe, ord=1), alpha=args.alpha)
 
-        while not done and episode_steps < 500 and i_episode < 4000:
+        while not done and episode_steps < 500 and i_episode < args.num_episodes:
             action = agent.select_action(state, probe, (i_episode+1)%2==0)  # Sample action from policy
 
+            # epsilon
             if (total_numsteps+1)%2==0:
                 action = np.random.randint(0, 2)
                         
@@ -121,37 +123,35 @@ def train(agent, env, memory, writer, args):
 
             state = next_state
 
-        if total_numsteps > args.num_steps or i_episode >= 4000:
+        if total_numsteps > args.num_steps or i_episode >= args.num_steps:
             break
 
         writer.add_scalar('reward/train', episode_reward, i_episode)
         # print("Episode: {}, total numsteps: {}, episode steps: {}, reward: {}".format(i_episode, total_numsteps, episode_steps, round(episode_reward, 2)))
 
-        if i_episode % 10 == 0 and args.eval is True:
+        if i_episode % 250 == 0 and args.eval is True:
             avg_reward = 0.
-            episodes = 10
 
             eval_reward = []
             reward_list = []
 
-            for _  in range(episodes):
-                for eval_probe in prob_list:
-                    state, _ = env.reset()
-                    value_f0 = agent.f_critic(torch.FloatTensor(state.reshape(1,-1)), eval_probe.reshape(1,-1))
-                    value_g0 = agent.critic_target(torch.FloatTensor(state.reshape(1,-1)), eval_probe.reshape(1,-1), torch.FloatTensor(np.array([[0.0]])))[0]
-                    value_g1 = agent.critic_target(torch.FloatTensor(state.reshape(1,-1)), eval_probe.reshape(1,-1), torch.FloatTensor(np.array([[1.0]])))[0]
-                    # episode_reward = 0
+            for eval_probe in prob_list:
+                state, _ = env.reset()
+                value_f0 = agent.f_critic(torch.FloatTensor(state.reshape(1,-1)), eval_probe.reshape(1,-1))
+                value_g0 = agent.critic_target(torch.FloatTensor(state.reshape(1,-1)), eval_probe.reshape(1,-1), torch.FloatTensor(np.array([[0.0]])))[0]
+                value_g1 = agent.critic_target(torch.FloatTensor(state.reshape(1,-1)), eval_probe.reshape(1,-1), torch.FloatTensor(np.array([[1.0]])))[0]
+                # episode_reward = 0
 
-                    done = False
-                    while not done:
-                        action = agent.select_action(state, eval_probe, evaluate=True)
-                        next_state, reward, done, truncated, info = env.step(action)
-                        eval_probe = eval_probe.clone().detach().cpu()
-                        eval_reward.append(np.dot(eval_probe, reward))
-                        
-                        reward_list.append(reward)
+                done = False
+                while not done:
+                    action = agent.select_action(state, eval_probe, evaluate=True)
+                    next_state, reward, done, truncated, info = env.step(action)
+                    eval_probe = eval_probe.clone().detach().cpu()
+                    eval_reward.append(np.dot(eval_probe, reward))
+                    
+                    reward_list.append(reward)
 
-                        state = next_state
+                    state = next_state
 
                 avg_reward += sum(eval_reward)/len(eval_reward)
 
@@ -176,5 +176,9 @@ def train(agent, env, memory, writer, args):
                         )
                     )
             print("----------------------------------------")
+    
+        if i_episode == args.num_episodes:
+            print("Training Complete")
+            return None
 
         env.close()

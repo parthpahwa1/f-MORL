@@ -35,8 +35,8 @@ parser.add_argument('--batch_size', type=int, default=256, metavar='N',
                     help='batch size (default: 256)')
 parser.add_argument('--num_steps', type=int, default=5000, metavar='N',
                     help='maximum number of steps (default: 5000)')
-parser.add_argument('--num_episodes', type=int, default=5000, metavar='N',
-                    help='maximum number of episodes (default: 5000)')
+parser.add_argument('--num_episodes', type=int, default=3000, metavar='N',
+                    help='maximum number of episodes (default: 3000)')
 parser.add_argument('--hidden_size', type=int, default=512, metavar='N',
                     help='hidden size (default: 512)')
 parser.add_argument('--updates_per_step', type=int, default=2, metavar='N',
