@@ -58,10 +58,10 @@ def generate_next_preference_gaussian(preference, alpha=10000):
     return FloatTensor(new_next_preference)
 
 def train(agent, env, args, memory, writer):
+    total_numsteps = 0
     for i_episode in itertools.count(args.num_episodes):
         episode_reward = 0
         episode_steps = 0
-        total_numsteps = 0
         updates = 0
 
         done = False
@@ -91,10 +91,10 @@ def train(agent, env, args, memory, writer):
 
             next_state, reward, done, truncated, info = env.step(action) # Step
             
-            if reward[0] > 6:
-                print('Training:', reward, 'probe:', probe)
+            # if reward[0] > 6:
+            #     print('Training:', reward, 'probe:', probe)
             
-                episode_steps += 1
+            episode_steps += 1
             total_numsteps += 1
 
             episode_reward += probe.dot(FloatTensor(reward)).item()
@@ -109,7 +109,7 @@ def train(agent, env, args, memory, writer):
             break
 
         writer.add_scalar('reward/train', episode_reward, i_episode)
-        print("Episode: {}, total numsteps: {}, episode steps: {}, reward: {}".format(i_episode, total_numsteps, episode_steps, round(episode_reward, 2)))
+        # print("Episode: {}, total numsteps: {}, episode steps: {}, reward: {}".format(i_episode, total_numsteps, episode_steps, round(episode_reward, 2)))
 
         if i_episode % 10 == 0 and args.eval is True:
             avg_reward = 0.
@@ -129,8 +129,8 @@ def train(agent, env, args, memory, writer):
                     # if done == True:
                     #     print(state, agent.f_critic(torch.FloatTensor(state.reshape(1,-1))))
 
-                    if reward[0] > 6:
-                        print('Evaluation:', reward)
+                    # if reward[0] > 6:
+                    #     print('Evaluation:', reward)
                     
                     episode_reward += probe.dot(FloatTensor(reward)).item()
 

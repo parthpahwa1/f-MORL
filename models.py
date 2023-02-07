@@ -289,8 +289,8 @@ class SAC(object):
 
             self.actor_optim.step()
                 
-            if (0.1*updates) % self.target_update_interval == 0:
-                print(G1_loss.item(), G_loss.item(), policy_loss.item(), F_loss.item())
+            # if (0.1*updates) % self.target_update_interval == 0:
+            #     print(G1_loss.item(), G_loss.item(), policy_loss.item(), F_loss.item())
             
         return G1_loss.item(), G_loss.item(), policy_loss.item(), alpha_loss.item(), alpha_tlogs.item()
 
