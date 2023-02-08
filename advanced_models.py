@@ -118,8 +118,9 @@ class HopperGaussianPolicy(nn.Module):
         normal = torch.distributions.Normal(loc=mean, scale=std)
         action = normal.sample()
         log_prob = normal.log_prob(action)
-        return log_prob
 
+        return log_prob
+    
     def sample(self, state, preference):
         mean, std = self.forward(state, preference)
         normal = torch.distributions.Normal(loc=mean, scale=std)
@@ -149,6 +150,7 @@ class HopperSAC(object):
         self.automatic_entropy_tuning = args.automatic_entropy_tuning
         self.alpha = args.alpha
         self.n_weights = args.num_weights
+        self.batch_size = args.batch_size
 
         device = ""
         if args.cuda:
@@ -217,7 +219,10 @@ class HopperSAC(object):
 
         state_batch = torch.FloatTensor(state_batch).to(self.device)
         next_state_batch = torch.FloatTensor(next_state_batch).to(self.device)
-        action_batch = torch.FloatTensor(action_batch).to(self.device).reshape(-1, 1)
+
+        action_batch = torch.FloatTensor(action_batch).to(self.device)
+        action_batch = torch.reshape(action_batch, (1, self.batch_size, 3))
+
         reward_batch = torch.FloatTensor(reward_batch).to(self.device)
         mask_batch = torch.FloatTensor(mask_batch).to(self.device).unsqueeze(1)
 
@@ -256,6 +261,8 @@ class HopperSAC(object):
 
         G_values = torch.cat((G_action0, G1_action1), dim=1)
         prior = torch.softmax(G_values, dim=1)
+
+        print(pi.shape, prior.shape)
 
         divergance_loss = self.divergance(pi, prior)
         divergance_loss = torch.sum(divergance_loss, dim=1).reshape(-1,1)
