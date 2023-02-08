@@ -85,10 +85,12 @@ class HopperReplayMemory:
 
         self.buffer[self.position] = (state, preference, action, reward, next_state, next_preference, done)
 
+        ############################################################################
         Q_val = agent.critic_target(torch.FloatTensor(state.reshape(1,-1)), preference.reshape(1,-1), torch.FloatTensor(np.array([[action]])))[0]
         hq_0 = agent.critic_target(torch.FloatTensor(next_state.reshape(1,-1)), next_preference.reshape(1,-1), torch.FloatTensor(np.array([[[-1.0,-1.0,-1.0]]])))[0]
         hq_1 = agent.critic_target(torch.FloatTensor(next_state.reshape(1,-1)), next_preference.reshape(1,-1), torch.FloatTensor(np.array([[[1.,1.,1.]]])))[0]
-
+        ############################################################################
+        
         hq = torch.max(hq_0, hq_1)
         wr = preference.dot(torch.FloatTensor(reward))
         p = abs(wr + done*self.gamma * hq - Q_val)

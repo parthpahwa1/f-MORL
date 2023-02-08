@@ -115,7 +115,7 @@ class HopperGaussianPolicy(nn.Module):
         return mean, std
 
     def get_probs(self, state, preference):
-
+        
         mean, std = self.forward(state, preference)
 
         normal = torch.distributions.Normal(loc=mean, scale=std)
@@ -190,8 +190,8 @@ class HopperSAC(object):
         return action.detach().cpu().numpy()
     
     def divergance(self, pi, prior):
-        pi = pi.exp()
-        return pi*torch.log((pi+1e-10)/(prior+1e-10))
+        # print(pi, "\n", "\n", prior)
+        return pi*torch.log(torch.abs((pi.exp()+1e-10)/(prior.exp()+1e-10)))
     
     def generate_neighbours(self, preference, next_preference, weight_num, speed=None):
         if speed is None:
@@ -217,6 +217,7 @@ class HopperSAC(object):
         return preference_neigbor, next_preference_neigbor
 
     def update_parameters(self, memory, batch_size, updates):
+        rng = np.random.RandomState(123)
         # Sample a batch from memory
         state_batch, preference_batch, action_batch, reward_batch, next_state_batch, next_preference_batch, mask_batch = memory.sample(batch_size=batch_size)
 
@@ -254,14 +255,14 @@ class HopperSAC(object):
         pi = self.actor.get_probs(state_batch, preference_batch)
         
         ############################################################################
-        action_0 = action_batch
-        # action_0 = torch.fill(action_batch, 0.0)
+        action_sample = np.array([[rng.uniform(-1,1,3) for i in range(preference_batch.size()[0])]])
+        action_0 = torch.FloatTensor(action_sample)
 
         G1_action0, G2_action0 = self.critic(state_batch, preference_batch, action_0)
         G_action0 = torch.min(G1_action0, G2_action0)
         G_values = G1_action0
         
-        prior = torch.softmax(G_values, dim=1)
+        prior = torch.log(torch.softmax(G_values, dim=1))
         ############################################################################
 
         divergance_loss = self.divergance(pi, prior.detach())
@@ -290,14 +291,15 @@ class HopperSAC(object):
             pi = self.actor.get_probs(state_batch, preference_batch)
             
             ############################################################################
-            action_0 = action_batch
+            action_sample = np.array([[rng.uniform(-1,1,3) for i in range(preference_batch.size()[0])]])
+            action_0 = torch.FloatTensor(action_sample)
             
             G1_action0, G2_action0 = self.critic_target(state_batch, preference_batch, action_0)
 
             G_action0 = torch.min(G1_action0, G2_action0)
 
             G_values = G_action0
-            prior = torch.softmax(G_values, dim=1)
+            prior = torch.log(torch.softmax(G_values, dim=1))
             ############################################################################
 
             divergance_loss = self.divergance(pi, prior.detach())
