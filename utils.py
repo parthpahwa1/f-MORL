@@ -204,7 +204,11 @@ def train_hopper(agent, env, memory, writer, args):
 
         while not done and episode_steps < 500 and i_episode < args.num_episodes:
             action = agent.select_action(state, probe, (i_episode+1)%2==0)  # Sample action from policy
-                        
+            
+            # epsilon
+            if (total_numsteps+1)%2==0:
+                action = rng.uniform(-1,1,3)  
+
             if len(memory) > args.batch_size:
                 # Number of updates per step in environment
                 for i in range(args.updates_per_step):

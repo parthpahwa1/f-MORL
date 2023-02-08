@@ -1,3 +1,5 @@
+# export CC=/opt/homebrew/bin/gcc-11 
+
 import argparse
 import datetime
 import numpy as np

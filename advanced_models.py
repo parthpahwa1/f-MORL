@@ -24,7 +24,7 @@ class F_Network(nn.Module):
         self.linear1 = nn.Linear(num_inputs+num_preferences, hidden_dim)
         self.linear2 = nn.Linear(hidden_dim, hidden_dim)
         self.linear2a = nn.Linear(hidden_dim, hidden_dim)
-        self.linear3 = nn.Linear(hidden_dim, 1)
+        self.linear3 = nn.Linear(hidden_dim, 3)
 
         self.apply(weights_init_)
 
@@ -45,13 +45,13 @@ class G_Network(nn.Module):
         self.linear1 = nn.Linear(num_inputs + num_preferences + 3, hidden_dim)
         self.linear2 = nn.Linear(hidden_dim, hidden_dim)
         self.linear2_a = nn.Linear(hidden_dim, hidden_dim)
-        self.linear3 = nn.Linear(hidden_dim, 1)
+        self.linear3 = nn.Linear(hidden_dim, 3)
 
         # Q2 architecture
         self.linear4 = nn.Linear(num_inputs + num_preferences + 3, hidden_dim)
         self.linear5 = nn.Linear(hidden_dim, hidden_dim)
         self.linear5_a = nn.Linear(hidden_dim, hidden_dim)
-        self.linear6 = nn.Linear(hidden_dim, 1)
+        self.linear6 = nn.Linear(hidden_dim, 3)
 
         self.apply(weights_init_)
 
@@ -95,30 +95,32 @@ class HopperGaussianPolicy(nn.Module):
     def forward(self, state, preference):
         input = torch.cat([state, preference], 1)
 
-        x = F.relu(self.linear1(input))
-        x = F.relu(self.linear1a(x))
-        x = F.relu(self.linear1b(x))
-        x = F.relu(self.linear1c(x))
+        x1 = F.relu(self.linear1(input))
+        x1 = F.relu(self.linear1a(x1))
+        x1 = F.relu(self.linear1b(x1))
+        x1 = F.relu(self.linear1c(x1))
 
-        mean = self.mean_linear(x)
+        mean = self.mean_linear(x1)
 
-        x = F.relu(self.linear2(input))
-        x = F.relu(self.linear2a(x))
-        x = F.relu(self.linear2b(x))
-        x = F.relu(self.linear2c(x))
+        x2 = F.relu(self.linear2(input))
+        x2 = F.relu(self.linear2a(x2))
+        x2 = F.relu(self.linear2b(x2))
+        x2 = F.relu(self.linear2c(x2))
 
-        log_std = self.std_linear(x)
-        log_std = torch.clamp(log_std, min=0, max=10)
+        log_std = self.std_linear(x2)  
         std = log_std.exp()
+
+        std = torch.clamp(std, min=0, max=None)
 
         return mean, std
 
     def get_probs(self, state, preference):
+
         mean, std = self.forward(state, preference)
+
         normal = torch.distributions.Normal(loc=mean, scale=std)
         action = normal.sample()
         log_prob = normal.log_prob(action)
-
         return log_prob
     
     def sample(self, state, preference):
@@ -188,6 +190,7 @@ class HopperSAC(object):
         return action.detach().cpu().numpy()
     
     def divergance(self, pi, prior):
+        pi = pi.exp()
         return pi*torch.log((pi+1e-10)/(prior+1e-10))
     
     def generate_neighbours(self, preference, next_preference, weight_num, speed=None):
@@ -250,27 +253,22 @@ class HopperSAC(object):
 
         pi = self.actor.get_probs(state_batch, preference_batch)
         
-        action_0 = torch.full(action_batch.shape, 0.).detach()
-        action_1 = torch.full(action_batch.shape, 1.0).detach()
+        ############################################################################
+        action_0 = action_batch
+        # action_0 = torch.fill(action_batch, 0.0)
 
         G1_action0, G2_action0 = self.critic(state_batch, preference_batch, action_0)
-        G1_action1, G2_action1 = self.critic(state_batch, preference_batch, action_1)
-
         G_action0 = torch.min(G1_action0, G2_action0)
-        G1_action1 = torch.min(G1_action1, G2_action1)
-
-        G_values = torch.cat((G_action0, G1_action1), dim=1)
+        G_values = G1_action0
+        
         prior = torch.softmax(G_values, dim=1)
+        ############################################################################
 
-        print(pi.shape, prior.shape)
-
-        divergance_loss = self.divergance(pi, prior)
+        divergance_loss = self.divergance(pi, prior.detach())
         divergance_loss = torch.sum(divergance_loss, dim=1).reshape(-1,1)
         
         F_val = self.f_critic(state_batch, preference_batch)
-
         target_F_value = next_G_value - self.alpha*divergance_loss.clamp(-1, 1)
-
         F_loss = F.mse_loss(F_val, target_F_value.detach())        
 
         policy_loss = divergance_loss.mean()
@@ -290,23 +288,23 @@ class HopperSAC(object):
             self.f_optim.step()
 
             pi = self.actor.get_probs(state_batch, preference_batch)
-        
-            action_0 = torch.full(action_batch.shape, 0.).detach()
-            action_1 = torch.full(action_batch.shape, 1.0).detach()
+            
+            ############################################################################
+            action_0 = action_batch
             
             G1_action0, G2_action0 = self.critic_target(state_batch, preference_batch, action_0)
-            G1_action1, G2_action1 = self.critic_target(state_batch, preference_batch, action_1)
 
             G_action0 = torch.min(G1_action0, G2_action0)
-            G1_action1 = torch.min(G1_action1, G2_action1)
 
-            G_values = torch.cat((G_action0, G1_action1), dim=1)
+            G_values = G_action0
             prior = torch.softmax(G_values, dim=1)
+            ############################################################################
 
             divergance_loss = self.divergance(pi, prior.detach())
             divergance_loss = torch.sum(divergance_loss, dim=1).reshape(-1,1)
-            policy_loss = divergance_loss.mean()
 
+            policy_loss = divergance_loss.mean()
+                        
             self.actor_optim.zero_grad()
             policy_loss.backward()
             torch.nn.utils.clip_grad_norm_(self.actor.parameters(), 1)
