@@ -3,6 +3,7 @@ import datetime
 import numpy as np
 from utils import *
 from models import *
+from advanced_models import *
 from replay_memory import *
 import mo_gym
 
@@ -12,7 +13,7 @@ import torch.nn.functional as F
 from torch.utils.tensorboard import SummaryWriter
 
 parser = argparse.ArgumentParser(description='PyTorch Soft Actor-Critic Args')
-parser.add_argument('--env-name', default="fruit-tree-v0",
+parser.add_argument('--env_name', default="fruit-tree-v0",
                     help='MOGYM enviroment (default: fruit-tree-v0)')
 parser.add_argument('--policy', default="Gaussian",
                     help='Policy Type: Gaussian | Deterministic (default: Gaussian)')
@@ -75,19 +76,40 @@ else:
     ByteTensor = torch.ByteTensor 
     Tensor = FloatTensor
 
-env = mo_gym.make(args.env_name)
-env.reset()
+if __name__ == "__main__":
 
-args.action_space = env.action_space
-args.num_inputs= env.observation_space.shape[0]
-args.num_preferences = 6
-args.num_weights = 1
+    env = mo_gym.make(args.env_name)
+    env.reset()
 
-agent = SAC(args.num_inputs, args)
+    if args.env_name == "fruit-tree-v0":
+        args.num_preferences = 6
+        args.num_weights = 1
+        args.action_space = env.action_space
+        args.num_inputs = env.observation_space.shape[0]
 
-writer = SummaryWriter('./runs/{}_SAC_{}_{}_{}'.format(datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S"), args.env_name,
-                                                             args.policy, "autotune" if args.automatic_entropy_tuning else ""))
+        agent = FruitTreeSAC(args.num_inputs, args)
 
-memory = ReplayMemory(args.replay_size,  args.gamma, args.seed)
+        writer = SummaryWriter('./FruitTree_runs/{}_SAC_{}_{}_{}'.format(datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S"), args.env_name,
+                                                                    args.policy, "autotune" if args.automatic_entropy_tuning else ""))
+        
+        memory = FruitTreeReplayMemory(args.replay_size,  args.gamma, args.seed)
 
-train(agent, env, memory, writer, args)
+        train_ft(agent, env, memory, writer, args)
+
+    elif args.env_name == "mo-hopper-v4":
+        args.num_preferences = 3
+        args.num_weights = 1
+        args.action_space = env.action_space
+        args.action_space.n = 3
+        args.num_inputs = env.observation_space.shape[0]
+        agent = HopperSAC(args.num_inputs, args)
+
+        writer = SummaryWriter('./Hopper_runs/{}_SAC_{}_{}_{}'.format(datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S"), args.env_name,
+                                                                    args.policy, "autotune" if args.automatic_entropy_tuning else ""))
+        
+        memory = HopperReplayMemory(args.replay_size,  args.gamma, args.seed)
+
+        train_hopper(agent, env, memory, writer, args)
+
+    else:
+        raise NameError(f"{args.env_name} is not an enviroment.")

@@ -42,13 +42,13 @@ class G_Network(nn.Module):
         super(G_Network, self).__init__()
         
         # Q1 architecture
-        self.linear1 = nn.Linear(num_inputs + num_preferences + 1, hidden_dim)
+        self.linear1 = nn.Linear(num_inputs + num_preferences + 3, hidden_dim)
         self.linear2 = nn.Linear(hidden_dim, hidden_dim)
         self.linear2_a = nn.Linear(hidden_dim, hidden_dim)
         self.linear3 = nn.Linear(hidden_dim, 1)
 
         # Q2 architecture
-        self.linear4 = nn.Linear(num_inputs + num_preferences + 1, hidden_dim)
+        self.linear4 = nn.Linear(num_inputs + num_preferences + 3, hidden_dim)
         self.linear5 = nn.Linear(hidden_dim, hidden_dim)
         self.linear5_a = nn.Linear(hidden_dim, hidden_dim)
         self.linear6 = nn.Linear(hidden_dim, 1)
@@ -56,8 +56,8 @@ class G_Network(nn.Module):
         self.apply(weights_init_)
 
     def forward(self, state, preference, action):
-        xu = torch.cat([state, preference, action], 1)
-        
+        xu = torch.cat([state, preference, action[0]], 1)
+
         x1 = F.relu(self.linear1(xu))
         x1 = F.relu(self.linear2(x1))
         x1 = F.relu(self.linear2_a(x1))
@@ -71,15 +71,22 @@ class G_Network(nn.Module):
         return x1, x2
 
 
-class FruitTreeGaussianPolicy(nn.Module):
+class HopperGaussianPolicy(nn.Module):
     def __init__(self, num_inputs, num_actions, num_preferences, hidden_dim, action_space=None):
-        super(FruitTreeGaussianPolicy, self).__init__()
+        super(HopperGaussianPolicy, self).__init__()
         
         self.linear1 = nn.Linear(num_inputs + num_preferences, hidden_dim)
+        self.linear1a = nn.Linear(hidden_dim, hidden_dim)
+        self.linear1b = nn.Linear(hidden_dim, hidden_dim)
+        self.linear1c = nn.Linear(hidden_dim, hidden_dim)
+        self.mean_linear = nn.Linear(hidden_dim, num_actions)
+
+        self.linear2 = nn.Linear(num_inputs + num_preferences, hidden_dim)
         self.linear2a = nn.Linear(hidden_dim, hidden_dim)
         self.linear2b = nn.Linear(hidden_dim, hidden_dim)
         self.linear2c = nn.Linear(hidden_dim, hidden_dim)
-        self.mean_linear = nn.Linear(hidden_dim, num_actions)
+        self.std_linear = nn.Linear(hidden_dim, num_actions)
+
 
         self.apply(weights_init_)
 
@@ -89,33 +96,43 @@ class FruitTreeGaussianPolicy(nn.Module):
         input = torch.cat([state, preference], 1)
 
         x = F.relu(self.linear1(input))
+        x = F.relu(self.linear1a(x))
+        x = F.relu(self.linear1b(x))
+        x = F.relu(self.linear1c(x))
+
+        mean = self.mean_linear(x)
+
+        x = F.relu(self.linear2(input))
         x = F.relu(self.linear2a(x))
         x = F.relu(self.linear2b(x))
         x = F.relu(self.linear2c(x))
 
-        mean = self.mean_linear(x)
-        return mean
+        log_std = self.std_linear(x)
+        log_std = torch.clamp(log_std, min=0, max=10)
+        std = log_std.exp()
+
+        return mean, std
 
     def get_probs(self, state, preference):
-        mean = self.forward(state, preference)
-        probs = torch.softmax(mean, dim=1)
-        return probs
+        mean, std = self.forward(state, preference)
+        normal = torch.distributions.Normal(loc=mean, scale=std)
+        action = normal.sample()
+        log_prob = normal.log_prob(action)
+        return log_prob
 
     def sample(self, state, preference):
-        mean = self.forward(state, preference)
-        probs = torch.softmax(mean, dim=1)
-        m = torch.distributions.Categorical(probs)
-        
-        action = m.sample()
-        log_prob = m.log_prob(action)
+        mean, std = self.forward(state, preference)
+        normal = torch.distributions.Normal(loc=mean, scale=std)
+        action = normal.sample()
+        log_prob = normal.log_prob(action)
 
-        return action.reshape(-1), log_prob, torch.argmax(probs, dim=1).reshape(-1)
+        return action.reshape(-1), log_prob, action.reshape(-1)
 
     def to(self, device):
-        return super(FruitTreeGaussianPolicy, self).to(device)
+        return super(HopperGaussianPolicy, self).to(device)
 
 
-class FruitTreeSAC(object):
+class HopperSAC(object):
 
     def __init__(self, num_inputs, args):
         super().__init__()
@@ -153,7 +170,7 @@ class FruitTreeSAC(object):
         self.f_critic = F_Network(self.num_inputs, self.n_preferences, args.hidden_size).to(device)
         self.f_optim = Adam(self.f_critic.parameters())
 
-        self.actor = FruitTreeGaussianPolicy(self.num_inputs, self.action_space.n, self.n_preferences, args.hidden_size, self.action_space).to(self.device)
+        self.actor = HopperGaussianPolicy(self.num_inputs, self.action_space.n, self.n_preferences, args.hidden_size, self.action_space).to(self.device)
         self.actor_optim = Adam(self.actor.parameters())
 
         return None
@@ -166,7 +183,7 @@ class FruitTreeSAC(object):
             action, _, _ = self.actor.sample(state, preference)
         else:
             _, _, action = self.actor.sample(state, preference)
-        return action.detach().cpu().numpy()[0]
+        return action.detach().cpu().numpy()
     
     def divergance(self, pi, prior):
         return pi*torch.log((pi+1e-10)/(prior+1e-10))
