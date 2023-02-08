@@ -248,8 +248,8 @@ def train_hopper(agent, env, memory, writer, args):
             for eval_probe in prob_list:
                 state, _ = env.reset()
                 value_f0 = agent.f_critic(torch.FloatTensor(state.reshape(1,-1)), eval_probe.reshape(1,-1))
-                value_g0 = agent.critic_target(torch.FloatTensor(state.reshape(1,-1)), eval_probe.reshape(1,-1), torch.FloatTensor(np.array([[[-1.0,-1.0,-1.0]]])))[0]
-                value_g1 = agent.critic_target(torch.FloatTensor(state.reshape(1,-1)), eval_probe.reshape(1,-1), torch.FloatTensor(np.array([[[1.0, 1.0, 1.0]]])))[0]
+                value_g0 = agent.critic_target(torch.FloatTensor(state.reshape(1,-1)), eval_probe.reshape(1,-1), torch.FloatTensor(np.array([[-1.0,-1.0,-1.0]])))[0]
+                value_g1 = agent.critic_target(torch.FloatTensor(state.reshape(1,-1)), eval_probe.reshape(1,-1), torch.FloatTensor(np.array([[1.0, 1.0, 1.0]])))[0]
                 # episode_reward = 0
 
                 done = False
