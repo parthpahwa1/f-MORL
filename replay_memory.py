@@ -4,7 +4,7 @@ import pickle
 import os
 import torch
 
-class FruitTreeReplayMemory:
+class DiscreteMemory:
     def __init__(self, capacity, gamma, seed):
         random.seed(seed)
         self.capacity = capacity
@@ -29,16 +29,19 @@ class FruitTreeReplayMemory:
         hq = torch.max(hq_0, hq_1)
         wr = preference.dot(torch.FloatTensor(reward))
         p = abs(wr + done*self.gamma * hq - Q_val)
-        self.priority_mem[self.position] = p.detach().item()
+        self.priority_mem[self.position] = p.detach().cpu().numpy()
 
         self.position = (self.position + 1) % self.capacity
 
     def sample(self, batch_size):
         pri =  np.array(self.priority_mem)
+        pri = np.array([item.max() for item in pri])
+        pri = pri / pri.sum()
+        print(pri, pri.shape)
         index_list = np.random.choice(
             range(len(self.buffer)), batch_size,
             replace=False,
-            p=pri / pri.sum()
+            p=pri 
         )
         # batch = random.sample(self.buffer, batch_size)
         batch = [self.buffer[i] for i in index_list]
@@ -67,7 +70,7 @@ class FruitTreeReplayMemory:
             self.position = len(self.buffer) % self.capacity
 
 
-class HopperReplayMemory:
+class ContinuousReplayMemory:
     def __init__(self, capacity, gamma, seed):
         random.seed(seed)
         self.capacity = capacity
