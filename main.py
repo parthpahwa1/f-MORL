@@ -98,7 +98,7 @@ if __name__ == "__main__":
 
         agent = DiscreteSAC(args.num_inputs, args)
 
-        writer = SummaryWriter('./FruitTree/{}_SAC_{}_{}_{}'.format(datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S"), args.env_name,
+        writer = SummaryWriter('./FruitTree_v0/{}_SAC_{}_{}_{}'.format(datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S"), args.env_name,
                                                                     args.policy, "autotune" if args.automatic_entropy_tuning else ""))
         
         memory = DiscreteMemory(args.replay_size,  args.gamma, args.seed)
@@ -122,7 +122,6 @@ if __name__ == "__main__":
         discrete_train(agent, env, memory, writer, args)
 
     elif args.env_name == "deep-sea-treasure-v0":
-        np.float = np.float32
         args.action_dim = 4
         args.num_preferences = 2
         args.num_weights = 1

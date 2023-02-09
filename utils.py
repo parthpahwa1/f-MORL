@@ -84,7 +84,7 @@ def generate_next_preference_gaussian(preference, alpha=0.2):
 
 def discrete_train(agent, env, memory, writer, args):
     rng = np.random.RandomState(args.seed)
-    pref_list = rng.rand(10, args.num_preferences)
+    pref_list = rng.rand(1000, args.num_preferences)
     pref_list = [torch.FloatTensor(item/sum(item)) for item in pref_list]
 
     total_numsteps = 0
@@ -162,10 +162,10 @@ def discrete_train(agent, env, memory, writer, args):
 
                     state = next_state
 
-                avg_reward += sum(eval_reward)/len(eval_reward)
 
-            reward_list = np.array(reward_list)
-            avg_reward = avg_reward/len(pref_list)
+                avg_reward += sum(eval_reward)/len(eval_reward)
+            
+            avg_reward = avg_reward/len(reward_list)
             # Add scale to the result list for evaluation of hypervolume
             # if args.env_name == "deep-sea-treasure-v0":
             #     reward_list += 1
