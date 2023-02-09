@@ -92,7 +92,7 @@ if __name__ == "__main__":
 
         agent = DiscreteSAC(args.num_inputs, args)
 
-        writer = SummaryWriter('./FruitTree_runs/{}_SAC_{}_{}_{}'.format(datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S"), args.env_name,
+        writer = SummaryWriter('./FruitTree/{}_SAC_{}_{}_{}'.format(datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S"), args.env_name,
                                                                     args.policy, "autotune" if args.automatic_entropy_tuning else ""))
         
         memory = DiscreteMemory(args.replay_size,  args.gamma, args.seed)

@@ -124,3 +124,7 @@ cython_debug/
 
 # Runs
 runs/
+DeepSeaTreasure_v0/
+FruitTree_runs/
+FruitTree/
+LunarLander_v2/
