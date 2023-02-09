@@ -89,7 +89,7 @@ if __name__ == "__main__":
         args.action_space = env.action_space
         args.num_inputs = env.observation_space.shape[0]
 
-        agent = FruitTreeSAC(args.num_inputs, args)
+        agent = DiscreteSAC(args.num_inputs, args)
 
         writer = SummaryWriter('./FruitTree_runs/{}_SAC_{}_{}_{}'.format(datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S"), args.env_name,
                                                                     args.policy, "autotune" if args.automatic_entropy_tuning else ""))
@@ -104,9 +104,24 @@ if __name__ == "__main__":
         args.action_space = env.action_space
         args.num_inputs = env.observation_space.shape[0]
 
-        agent = LunarLanderSAC(args.num_inputs, args)
+        agent = DiscreteSAC(args.num_inputs, args)
 
         writer = SummaryWriter('./LunarLander_v2/{}_SAC_{}_{}_{}'.format(datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S"), args.env_name,
+                                                                    args.policy, "autotune" if args.automatic_entropy_tuning else ""))
+        
+        memory = DiscreteMemory(args.replay_size,  args.gamma, args.seed)
+
+        train_ll(agent, env, memory, writer, args)
+
+    elif args.env_name == "deep-sea-treasure-v0":
+        args.num_preferences = 2
+        args.num_weights = 1
+        args.action_space = env.action_space
+        args.num_inputs = env.observation_space.shape[0]
+
+        agent = DiscreteSAC(args.num_inputs, args)
+
+        writer = SummaryWriter('./DeepSeaTreasure_v0/{}_SAC_{}_{}_{}'.format(datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S"), args.env_name,
                                                                     args.policy, "autotune" if args.automatic_entropy_tuning else ""))
         
         memory = DiscreteMemory(args.replay_size,  args.gamma, args.seed)

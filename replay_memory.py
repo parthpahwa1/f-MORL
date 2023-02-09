@@ -102,7 +102,6 @@ class ContinuousReplayMemory:
 
     def sample(self, batch_size):
         pri =  np.array(self.priority_mem)
-        pri = np.array([item.max() for item in pri])
         pri = pri/pri.sum()
 
         index_list = np.random.choice(
