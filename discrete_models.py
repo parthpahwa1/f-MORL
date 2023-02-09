@@ -19,13 +19,13 @@ def weights_init_(m):
 
 
 class Discrete_F_Network(nn.Module):
-    def __init__(self, num_inputs, num_preferences, hidden_dim):
+    def __init__(self, num_inputs, num_preferences, action_dim, hidden_dim):
         super(Discrete_F_Network, self).__init__()
 
         self.linear1 = nn.Linear(num_inputs+num_preferences, hidden_dim)
         self.linear2 = nn.Linear(hidden_dim, hidden_dim)
         self.linear2a = nn.Linear(hidden_dim, hidden_dim)
-        self.linear3 = nn.Linear(hidden_dim, 1)
+        self.linear3 = nn.Linear(hidden_dim, action_dim)
 
         self.apply(weights_init_)
 
@@ -39,25 +39,25 @@ class Discrete_F_Network(nn.Module):
 
 
 class Discrete_G_Network(nn.Module):
-    def __init__(self, num_inputs, num_actions, num_preferences, hidden_dim):
+    def __init__(self, num_inputs, num_preferences, action_dim, hidden_dim):
         super(Discrete_G_Network, self).__init__()
         
         # Q1 architecture
-        self.linear1 = nn.Linear(num_inputs + num_preferences + 1, hidden_dim)
+        self.linear1 = nn.Linear(num_inputs + num_preferences, hidden_dim)
         self.linear2 = nn.Linear(hidden_dim, hidden_dim)
         self.linear2_a = nn.Linear(hidden_dim, hidden_dim)
-        self.linear3 = nn.Linear(hidden_dim, 1)
+        self.linear3 = nn.Linear(hidden_dim, action_dim)
 
         # Q2 architecture
-        self.linear4 = nn.Linear(num_inputs + num_preferences + 1, hidden_dim)
+        self.linear4 = nn.Linear(num_inputs + num_preferences, hidden_dim)
         self.linear5 = nn.Linear(hidden_dim, hidden_dim)
         self.linear5_a = nn.Linear(hidden_dim, hidden_dim)
-        self.linear6 = nn.Linear(hidden_dim, 1)
+        self.linear6 = nn.Linear(hidden_dim, action_dim)
 
         self.apply(weights_init_)
 
-    def forward(self, state, preference, action):
-        xu = torch.cat([state, preference, action], 1)
+    def forward(self, state, preference):
+        xu = torch.cat([state, preference], 1)
         
         x1 = F.relu(self.linear1(xu))
         x1 = F.relu(self.linear2(x1))
@@ -73,14 +73,14 @@ class Discrete_G_Network(nn.Module):
 
 
 class DiscreteGaussianPolicy(nn.Module):
-    def __init__(self, num_inputs, num_actions, num_preferences, hidden_dim, action_space=None):
+    def __init__(self, num_inputs, num_preferences, action_dim, hidden_dim):
         super(DiscreteGaussianPolicy, self).__init__()
         
         self.linear1 = nn.Linear(num_inputs + num_preferences, hidden_dim)
         self.linear2a = nn.Linear(hidden_dim, hidden_dim)
         self.linear2b = nn.Linear(hidden_dim, hidden_dim)
         self.linear2c = nn.Linear(hidden_dim, hidden_dim)
-        self.mean_linear = nn.Linear(hidden_dim, num_actions)
+        self.mean_linear = nn.Linear(hidden_dim, action_dim)
 
         self.apply(weights_init_)
 
@@ -124,15 +124,21 @@ class DiscreteSAC(object):
         self.num_inputs = num_inputs
 
         self.args = args
+
         self.action_space = args.action_space
-        self.gamma = args.gamma
-        self.tau = args.tau
+        self.num_actions = args.action_space.n
+        self.action_dim = args.action_dim
         self.n_preferences = args.num_preferences
-        self.policy_type = args.policy
+        self.n_weights = args.num_weights
+
         self.target_update_interval = args.target_update_interval
         self.automatic_entropy_tuning = args.automatic_entropy_tuning
+
+        self.gamma = args.gamma
+        self.tau = args.tau
+        self.policy_type = args.policy
         self.alpha = args.alpha
-        self.n_weights = args.num_weights
+        
 
         device = ""
         if args.cuda:
@@ -144,17 +150,16 @@ class DiscreteSAC(object):
 
         self.device = torch.device(device)
 
-        self.critic = Discrete_G_Network(self.num_inputs, self.action_space.n, self.n_preferences, args.hidden_size).to(device)
+        self.critic = Discrete_G_Network(self.num_inputs, self.n_preferences, self.action_dim, args.hidden_size).to(device)
         self.critic_optim = Adam(self.critic.parameters())
 
-        self.critic_target = Discrete_G_Network(num_inputs, self.action_space.n, self.n_preferences, args.hidden_size).to(device)
-
+        self.critic_target = Discrete_G_Network(self.num_inputs, self.n_preferences, self.action_dim, args.hidden_size).to(device)
         hard_update(self.critic_target, self.critic)
 
-        self.f_critic = Discrete_F_Network(self.num_inputs, self.n_preferences, args.hidden_size).to(device)
+        self.f_critic = Discrete_F_Network(self.num_inputs, self.n_preferences, self.action_dim, args.hidden_size).to(device)
         self.f_optim = Adam(self.f_critic.parameters())
 
-        self.actor = DiscreteGaussianPolicy(self.num_inputs, self.action_space.n, self.n_preferences, args.hidden_size, self.action_space).to(self.device)
+        self.actor = DiscreteGaussianPolicy(self.num_inputs, self.n_preferences, self.action_dim, args.hidden_size).to(self.device)
         self.actor_optim = Adam(self.actor.parameters())
 
         return None
@@ -214,7 +219,7 @@ class DiscreteSAC(object):
             next_G_value = reward + mask_batch * self.gamma * (F_next_target)
         
         # Two Q-functions to mitigate positive bias in the policy improvement step
-        G1, G2 = self.critic(state_batch, preference_batch, action_batch)  
+        G1, G2 = self.critic(state_batch, preference_batch)  
         
         # JQ = 𝔼(st,at)~D[0.5(Q1(st,at) - r(st,at) - γ(𝔼st+1~p[V(st+1)]))^2]
         G1_loss = F.smooth_l1_loss(G1, next_G_value)  
@@ -229,17 +234,11 @@ class DiscreteSAC(object):
 
         pi = self.actor.get_probs(state_batch, preference_batch)
         ########################################################
-        G_list = []
-        for i in range(preference_batch.shape[1]):
-            temp = torch.full(action_batch.shape, float(i)).detach()
-            G1_action0, G2_action0 = self.critic(state_batch, preference_batch, temp)
+        G1_action0, G2_action0 = self.critic(state_batch, preference_batch)
 
-            G_action0 = torch.min(G1_action0, G2_action0)
-            G_list.append(G_action0)
+        G_action0 = torch.min(G1_action0, G2_action0)
 
-        G_values = torch.cat(tuple(G_list), dim=1)
-
-        prior = torch.softmax(G_values, dim=1)
+        prior = torch.softmax(G_action0, dim=1)
 
         divergance_loss = self.divergance(pi, prior.detach())
         divergance_loss = torch.sum(divergance_loss, dim=1).reshape(-1,1)
@@ -267,16 +266,14 @@ class DiscreteSAC(object):
 
             pi = self.actor.get_probs(state_batch, preference_batch)
             ########################################################
-            G_list = []
-            for i in range(preference_batch.shape[1]):
-                temp = torch.full(action_batch.shape, float(i)).detach()
-                G1_action0, G2_action0 = self.critic(state_batch, preference_batch, temp)
+            G1_action0, G2_action0 = self.critic(state_batch, preference_batch)
 
-                G_action0 = torch.min(G1_action0, G2_action0)
-                G_list.append(G_action0)
+            G_action0 = torch.min(G1_action0, G2_action0)
 
-            G_values = torch.cat(tuple(G_list), dim=1)
-            prior = torch.softmax(G_values, dim=1)
+            prior = torch.softmax(G_action0, dim=1)
+
+            divergance_loss = self.divergance(pi, prior.detach())
+            divergance_loss = torch.sum(divergance_loss, dim=1).reshape(-1,1)
 
             ########################################################
             divergance_loss = self.divergance(pi, prior.detach())

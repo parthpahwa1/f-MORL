@@ -36,13 +36,13 @@ parser.add_argument('--seed', type=int, default=123, metavar='N',
                     help='random seed (default: 123456)')
 parser.add_argument('--batch_size', type=int, default=256, metavar='N',
                     help='batch size (default: 256)')
-parser.add_argument('--num_steps', type=int, default=100000, metavar='N',
-                    help='maximum number of steps (default: 100000)')
+parser.add_argument('--num_steps', type=int, default=1.5e6, metavar='N',
+                    help='maximum number of steps (default: 1.5e6)')
 parser.add_argument('--num_episodes', type=int, default=3000, metavar='N',
                     help='maximum number of episodes (default: 3000)')
 parser.add_argument('--hidden_size', type=int, default=512, metavar='N',
                     help='hidden size (default: 512)')
-parser.add_argument('--updates_per_step', type=int, default=2, metavar='N',
+parser.add_argument('--updates_per_step', type=int, default=1, metavar='N',
                     help='model updates per simulator step (default: 1)')
 parser.add_argument('--start_steps', type=int, default=10000, metavar='N',
                     help='Steps sampling random actions (default: 10000)')
@@ -84,6 +84,7 @@ if __name__ == "__main__":
     env.reset()
 
     if args.env_name == "fruit-tree-v0":
+        args.action_dim = 2
         args.num_preferences = 6
         args.num_weights = 1
         args.action_space = env.action_space
@@ -96,9 +97,10 @@ if __name__ == "__main__":
         
         memory = DiscreteMemory(args.replay_size,  args.gamma, args.seed)
 
-        train_ft(agent, env, memory, writer, args)
+        discrete_train(agent, env, memory, writer, args)
     
     elif args.env_name == "mo-lunar-lander-v2":
+        args.action_dim = 4
         args.num_preferences = 4
         args.num_weights = 1
         args.action_space = env.action_space
@@ -111,9 +113,10 @@ if __name__ == "__main__":
         
         memory = DiscreteMemory(args.replay_size,  args.gamma, args.seed)
 
-        train_ll(agent, env, memory, writer, args)
+        discrete_train(agent, env, memory, writer, args)
 
     elif args.env_name == "deep-sea-treasure-v0":
+        args.action_dim = 4
         args.num_preferences = 2
         args.num_weights = 1
         args.action_space = env.action_space
@@ -126,7 +129,7 @@ if __name__ == "__main__":
         
         memory = DiscreteMemory(args.replay_size,  args.gamma, args.seed)
 
-        train_ll(agent, env, memory, writer, args)
+        discrete_train(agent, env, memory, writer, args)
 
     elif args.env_name == "mo-hopper-v4":
         args.num_preferences = 3

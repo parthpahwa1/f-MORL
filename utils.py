@@ -193,7 +193,7 @@ def train_ft(agent, env, memory, writer, args):
         env.close()
 
 
-def train_ll(agent, env, memory, writer, args):
+def discrete_train(agent, env, memory, writer, args):
     rng = np.random.RandomState(args.seed)
     pref_list = rng.rand(1000, args.num_preferences)
     pref_list = [torch.FloatTensor(item/sum(item)) for item in pref_list]
@@ -215,7 +215,7 @@ def train_ll(agent, env, memory, writer, args):
             action = agent.select_action(state, probe, (i_episode+1)%2==0)  # Sample action from policy
             # epsilon
             if (total_numsteps+1)%2==0:
-                action = rng.randint(0, args.num_preferences)
+                action = rng.randint(0, args.action_space.n)
                         
             if len(memory) > args.batch_size:
                 # Number of updates per step in environment
@@ -239,7 +239,7 @@ def train_ll(agent, env, memory, writer, args):
             mask = 1 if episode_steps == 20 else float(not done)
 
             memory.push(state, probe, action, reward, next_state, probe, mask, agent) # Append transition to memory
-
+            
             state = next_state
 
         if total_numsteps > args.num_steps or i_episode >= args.num_steps:
@@ -248,7 +248,7 @@ def train_ll(agent, env, memory, writer, args):
         writer.add_scalar('reward/train', episode_reward, i_episode)
         # print("Episode: {}, total numsteps: {}, episode steps: {}, reward: {}".format(i_episode, total_numsteps, episode_steps, round(episode_reward, 2)))
 
-        if i_episode % 10 == 0 and args.eval is True:
+        if i_episode % 250 == 0 and args.eval is True:
             avg_reward = 0.
 
             eval_reward = []
@@ -256,11 +256,11 @@ def train_ll(agent, env, memory, writer, args):
 
             for eval_pref in pref_list:
                 state, _ = env.reset()
-                # value_f0 = agent.f_critic(torch.FloatTensor(state.reshape(1,-1)), eval_probe.reshape(1,-1))
-                # value_g0 = agent.critic_target(torch.FloatTensor(state.reshape(1,-1)), eval_probe.reshape(1,-1), torch.FloatTensor(np.array([[0.0]])))[0]
-                # value_g1 = agent.critic_target(torch.FloatTensor(state.reshape(1,-1)), eval_probe.reshape(1,-1), torch.FloatTensor(np.array([[1.0]])))[0]
-                # value_g2 = agent.critic_target(torch.FloatTensor(state.reshape(1,-1)), eval_probe.reshape(1,-1), torch.FloatTensor(np.array([[2.0]])))[0]
-                # value_g3 = agent.critic_target(torch.FloatTensor(state.reshape(1,-1)), eval_probe.reshape(1,-1), torch.FloatTensor(np.array([[3.0]])))[0]
+                # value_f0 = agent.f_critic(torch.FloatTensor(state.reshape(1,-1)), eval_pref.reshape(1,-1))
+                # value_g0 = agent.critic_target(torch.FloatTensor(state.reshape(1,-1)), eval_pref.reshape(1,-1), torch.FloatTensor(np.array([[0.0]])))[0]
+                # value_g1 = agent.critic_target(torch.FloatTensor(state.reshape(1,-1)), eval_pref.reshape(1,-1), torch.FloatTensor(np.array([[1.0]])))[0]
+                # # value_g2 = agent.critic_target(torch.FloatTensor(state.reshape(1,-1)), eval_pref.reshape(1,-1), torch.FloatTensor(np.array([[2.0]])))[0]
+                # value_g3 = agent.critic_target(torch.FloatTensor(state.reshape(1,-1)), eval_pref.reshape(1,-1), torch.FloatTensor(np.array([[3.0]])))[0]
                 # episode_reward = 0
 
                 done = False
