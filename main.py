@@ -116,6 +116,7 @@ if __name__ == "__main__":
         discrete_train(agent, env, memory, writer, args)
 
     elif args.env_name == "deep-sea-treasure-v0":
+        np.float = np.float32
         args.action_dim = 4
         args.num_preferences = 2
         args.num_weights = 1

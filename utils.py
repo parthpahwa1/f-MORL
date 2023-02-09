@@ -195,7 +195,7 @@ def train_ft(agent, env, memory, writer, args):
 
 def discrete_train(agent, env, memory, writer, args):
     rng = np.random.RandomState(args.seed)
-    pref_list = rng.rand(1000, args.num_preferences)
+    pref_list = rng.rand(5000, args.num_preferences)
     pref_list = [torch.FloatTensor(item/sum(item)) for item in pref_list]
 
     total_numsteps = 0
@@ -279,6 +279,14 @@ def discrete_train(agent, env, memory, writer, args):
             
             reward_list = np.array(reward_list)
             avg_reward = avg_reward/len(pref_list)
+
+            # Add scale to the result list for evaluation of hypervolume
+            # if args.env_name == "deep-sea-treasure-v0":
+            #     reward_list += 1
+            # elif args.env_name == "mo-lunar-lander-v2":
+            #     reward_list += 100
+            # else:
+            #     pass
 
             hyper = hypervolume(np.zeros(args.num_preferences), reward_list)
 
