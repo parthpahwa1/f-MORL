@@ -22,21 +22,25 @@ class DiscreteMemory:
 
         self.buffer[self.position] = (state, preference, action, reward, next_state, next_preference, done)
 
-        Q_val = agent.critic_target(torch.FloatTensor(state.reshape(1,-1)), preference.reshape(1,-1))[0]
-        hq_0 = agent.critic_target(torch.FloatTensor(next_state.reshape(1,-1)), next_preference.reshape(1,-1))[0]
-        hq_1 = agent.critic_target(torch.FloatTensor(next_state.reshape(1,-1)), next_preference.reshape(1,-1))[0]
+        Q_val_0, Q_val_1 = agent.critic_target(torch.FloatTensor(state.reshape(1,-1)), preference.reshape(1,-1))
+        Q_val = torch.min(Q_val_0, Q_val_1)[0]
+        Q_val = Q_val[action]
 
-        hq = torch.max(hq_0, hq_1)
+        hq_0, hq_1 = agent.critic_target(torch.FloatTensor(next_state.reshape(1,-1)), next_preference.reshape(1,-1))
+        hq = torch.min(hq_0, hq_1)
+        hq = torch.max(hq)
+
         wr = preference.dot(torch.FloatTensor(reward))
         p = abs(wr + done*self.gamma * hq - Q_val)
+
         self.priority_mem[self.position] = p.detach().cpu().numpy()
 
         self.position = (self.position + 1) % self.capacity
 
     def sample(self, batch_size):
         pri =  np.array(self.priority_mem)
-        pri = np.array([item.max() for item in pri])
         pri = pri / pri.sum()
+
         index_list = np.random.choice(
             range(len(self.buffer)), batch_size,
             replace=False,

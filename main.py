@@ -27,15 +27,12 @@ parser.add_argument('--tau', type=float, default=0.005, metavar='G',
                     help='target smoothing coefficient(τ) (default: 0.005)')
 parser.add_argument('--lr', type=float, default=3e-4, metavar='G',
                     help='learning rate (default: 0.0003)')
-parser.add_argument('--alpha', type=float, default=0.2, metavar='G',
-                    help='Temperature parameter α determines the relative importance of the entropy\
-                          term against the reward (default: 0.2)')
 parser.add_argument('--automatic_entropy_tuning', type=bool, default=False, metavar='G',
                     help='Automaically adjust α (default: False)')
 parser.add_argument('--seed', type=int, default=123, metavar='N',
                     help='random seed (default: 123)')
-parser.add_argument('--batch_size', type=int, default=256, metavar='N',
-                    help='batch size (default: 256)')
+parser.add_argument('--batch_size', type=int, default=128, metavar='N',
+                    help='batch size (default: 128)')
 parser.add_argument('--num_steps', type=int, default=int(1.5e6), metavar='N',
                     help='maximum number of steps (default: 1.5e6)')
 parser.add_argument('--num_episodes', type=int, default=int(1e5), metavar='N',
@@ -54,7 +51,16 @@ parser.add_argument('--cuda', action="store_true",
                     help='run on CUDA (default: False)')
 parser.add_argument('--mps', action="store_true",
                     help='run on mps (default: False)')
+
+parser.add_argument('--divergence', type=str, default='alpha',
+                    help="Type of divergence constraint")
+parser.add_argument('--alpha', type=float, default=1, metavar='G',
+                    help='alpha divergence constant (default: 1)')
 args = parser.parse_args()
+
+# Assertions
+assert args.divergence in {"alpha", "variational_distance", "Jensen-Shannon"}
+assert args.env_name in {"fruit-tree-v0", "mo-lunar-lander-v2", "deep-sea-treasure-v0"}
 
 if not torch.backends.mps.is_available():
     if not torch.backends.mps.is_built():
