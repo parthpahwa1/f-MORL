@@ -227,6 +227,7 @@ class DiscreteSAC(object):
         
         G_loss = G1_loss + G2_loss
 
+        # Critic Backwards Step
         self.critic_optim.zero_grad()
         G_loss.backward()
         torch.nn.utils.clip_grad_norm_(self.critic.parameters(), 1)
@@ -244,6 +245,7 @@ class DiscreteSAC(object):
         divergance_loss = torch.sum(divergance_loss, dim=1).reshape(-1,1)
         policy_loss = divergance_loss.mean()
 
+        # Actor backwards step
         self.actor_optim.zero_grad()
         policy_loss.backward()
         torch.nn.utils.clip_grad_norm_(self.actor.parameters(), 1)
@@ -253,6 +255,7 @@ class DiscreteSAC(object):
         target_F_value = next_G_value - self.alpha*divergance_loss.clamp(-1, 1)
         F_loss = F.mse_loss(F_val, target_F_value.detach())   
 
+        # F critic backwards step
         self.f_optim.zero_grad()
         F_loss.backward()
         torch.nn.utils.clip_grad_norm_(self.f_critic.parameters(), 1)

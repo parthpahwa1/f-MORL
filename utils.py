@@ -33,6 +33,7 @@ def hypervolume(ref_point: np.ndarray, points: List[np.ndarray]) -> float:
     """
     return HV(ref_point=ref_point * -1)(np.array(points) * -1)
 
+
 def create_log_gaussian(mean, log_std, t):
     quadratic = -((0.5 * (t - mean) / (log_std.exp())).pow(2))
     l = mean.shape
