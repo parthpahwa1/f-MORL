@@ -164,7 +164,7 @@ def train_ft(agent, env, memory, writer, args):
                 avg_reward += sum(eval_reward)/len(eval_reward)
 
             avg_reward = avg_reward/len(prob_list)
-            hyper = hypervolume(args.num_preferences, reward_list)
+            hyper = hypervolume(np.zeros(args.num_preferences), reward_list)
 
             writer.add_scalar('Test Average Reward', avg_reward, i_episode)
             writer.add_scalar('Hypervolume', hyper, i_episode)
@@ -275,7 +275,7 @@ def train_ll(agent, env, memory, writer, args):
                 avg_reward += sum(eval_reward)/len(eval_reward)
 
             avg_reward = avg_reward/len(prob_list)
-            hyper = hypervolume(args.num_preferences, reward_list)
+            hyper = hypervolume(np.zeros(args.num_preferences), reward_list)
 
             writer.add_scalar('Test Average Reward', avg_reward, i_episode)
             writer.add_scalar('Hypervolume', hyper, i_episode)
