@@ -3,6 +3,7 @@ import torch
 import itertools
 import numpy as np
 from pymoo.indicators.hv import HV
+
 from typing import List, Optional, Tuple, Union
 
 from pymoo.config import Config
@@ -31,7 +32,6 @@ def hypervolume(ref_point: np.ndarray, points: List[np.ndarray]) -> float:
         float: Hypervolume metric
     """
     return HV(ref_point=ref_point * -1)(np.array(points) * -1)
-
 
 def create_log_gaussian(mean, log_std, t):
     quadratic = -((0.5 * (t - mean) / (log_std.exp())).pow(2))
@@ -137,7 +137,7 @@ def train_ft(agent, env, memory, writer, args):
         writer.add_scalar('reward/train', episode_reward, i_episode)
         # print("Episode: {}, total numsteps: {}, episode steps: {}, reward: {}".format(i_episode, total_numsteps, episode_steps, round(episode_reward, 2)))
 
-        if i_episode % 250 == 0 and args.eval is True:
+        if i_episode % 10 == 0 and args.eval is True:
             avg_reward = 0.
 
             eval_reward = []
@@ -145,9 +145,9 @@ def train_ft(agent, env, memory, writer, args):
 
             for eval_probe in prob_list:
                 state, _ = env.reset()
-                value_f0 = agent.f_critic(torch.FloatTensor(state.reshape(1,-1)), eval_probe.reshape(1,-1))
-                value_g0 = agent.critic_target(torch.FloatTensor(state.reshape(1,-1)), eval_probe.reshape(1,-1), torch.FloatTensor(np.array([[0.0]])))[0]
-                value_g1 = agent.critic_target(torch.FloatTensor(state.reshape(1,-1)), eval_probe.reshape(1,-1), torch.FloatTensor(np.array([[1.0]])))[0]
+                # value_f0 = agent.f_critic(torch.FloatTensor(state.reshape(1,-1)), eval_probe.reshape(1,-1))
+                # value_g0 = agent.critic_target(torch.FloatTensor(state.reshape(1,-1)), eval_probe.reshape(1,-1), torch.FloatTensor(np.array([[0.0]])))[0]
+                # value_g1 = agent.critic_target(torch.FloatTensor(state.reshape(1,-1)), eval_probe.reshape(1,-1), torch.FloatTensor(np.array([[1.0]])))[0]
                 # episode_reward = 0
 
                 done = False
@@ -195,8 +195,8 @@ def train_ft(agent, env, memory, writer, args):
 
 def train_ll(agent, env, memory, writer, args):
     rng = np.random.RandomState(args.seed)
-    prob_list = rng.rand(1000, args.num_preferences)
-    prob_list = [torch.FloatTensor(item/sum(item)) for item in prob_list]
+    pref_list = rng.rand(1000, args.num_preferences)
+    pref_list = [torch.FloatTensor(item/sum(item)) for item in pref_list]
 
     total_numsteps = 0
     updates = 0
@@ -214,8 +214,8 @@ def train_ll(agent, env, memory, writer, args):
         while not done and episode_steps < 500 and i_episode < args.num_episodes:
             action = agent.select_action(state, probe, (i_episode+1)%2==0)  # Sample action from policy
             # epsilon
-            # if (total_numsteps+1)%2==0:
-            #     action = np.random.randint(0, 2)
+            if (total_numsteps+1)%2==0:
+                action = rng.randint(0, args.num_preferences)
                         
             if len(memory) > args.batch_size:
                 # Number of updates per step in environment
@@ -248,33 +248,38 @@ def train_ll(agent, env, memory, writer, args):
         writer.add_scalar('reward/train', episode_reward, i_episode)
         # print("Episode: {}, total numsteps: {}, episode steps: {}, reward: {}".format(i_episode, total_numsteps, episode_steps, round(episode_reward, 2)))
 
-        if i_episode % 250 == 0 and args.eval is True:
+        if i_episode % 10 == 0 and args.eval is True:
             avg_reward = 0.
 
             eval_reward = []
             reward_list = []
 
-            for eval_probe in prob_list:
+            for eval_pref in pref_list:
                 state, _ = env.reset()
-                value_f0 = agent.f_critic(torch.FloatTensor(state.reshape(1,-1)), eval_probe.reshape(1,-1))
-                value_g0 = agent.critic_target(torch.FloatTensor(state.reshape(1,-1)), eval_probe.reshape(1,-1), torch.FloatTensor(np.array([[0.0]])))[0]
-                value_g1 = agent.critic_target(torch.FloatTensor(state.reshape(1,-1)), eval_probe.reshape(1,-1), torch.FloatTensor(np.array([[1.0]])))[0]
+                # value_f0 = agent.f_critic(torch.FloatTensor(state.reshape(1,-1)), eval_probe.reshape(1,-1))
+                # value_g0 = agent.critic_target(torch.FloatTensor(state.reshape(1,-1)), eval_probe.reshape(1,-1), torch.FloatTensor(np.array([[0.0]])))[0]
+                # value_g1 = agent.critic_target(torch.FloatTensor(state.reshape(1,-1)), eval_probe.reshape(1,-1), torch.FloatTensor(np.array([[1.0]])))[0]
+                # value_g2 = agent.critic_target(torch.FloatTensor(state.reshape(1,-1)), eval_probe.reshape(1,-1), torch.FloatTensor(np.array([[2.0]])))[0]
+                # value_g3 = agent.critic_target(torch.FloatTensor(state.reshape(1,-1)), eval_probe.reshape(1,-1), torch.FloatTensor(np.array([[3.0]])))[0]
                 # episode_reward = 0
 
                 done = False
                 while not done:
-                    action = agent.select_action(state, eval_probe, evaluate=True)
+                    action = agent.select_action(state, eval_pref, evaluate=True)
                     next_state, reward, done, truncated, info = env.step(action)
-                    eval_probe = eval_probe.clone().detach().cpu()
-                    eval_reward.append(np.dot(eval_probe, reward))
+                    eval_pref = eval_pref.clone().detach().cpu()
+                    temp = eval_pref.numpy()
+                    eval_reward.append(np.dot(temp, reward))
                     
                     reward_list.append(reward)
 
                     state = next_state
 
                 avg_reward += sum(eval_reward)/len(eval_reward)
+            
+            reward_list = np.array(reward_list)
+            avg_reward = avg_reward/len(pref_list)
 
-            avg_reward = avg_reward/len(prob_list)
             hyper = hypervolume(np.zeros(args.num_preferences), reward_list)
 
             writer.add_scalar('Test Average Reward', avg_reward, i_episode)
