@@ -207,7 +207,7 @@ def discrete_train(agent, env, memory, writer, args):
 
         done = False
         state, _ = env.reset()
-        
+
         probe = np.random.randn(args.num_preferences)
         probe = generate_next_preference(np.abs(probe)/np.linalg.norm(probe, ord=1), alpha=args.alpha)
 
@@ -216,7 +216,7 @@ def discrete_train(agent, env, memory, writer, args):
             # epsilon
             if (total_numsteps+1)%2==0:
                 action = rng.randint(0, args.action_space.n)
-                        
+
             if len(memory) > args.batch_size:
                 # Number of updates per step in environment
                 for i in range(args.updates_per_step):

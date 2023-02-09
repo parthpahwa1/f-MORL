@@ -233,7 +233,7 @@ class DiscreteSAC(object):
         self.critic_optim.step()
 
         pi = self.actor.get_probs(state_batch, preference_batch)
-        ########################################################
+
         G1_action0, G2_action0 = self.critic(state_batch, preference_batch)
 
         G_action0 = torch.min(G1_action0, G2_action0)
@@ -242,52 +242,28 @@ class DiscreteSAC(object):
 
         divergance_loss = self.divergance(pi, prior.detach())
         divergance_loss = torch.sum(divergance_loss, dim=1).reshape(-1,1)
-        ########################################################
-        
+        policy_loss = divergance_loss.mean()
+
+        self.actor_optim.zero_grad()
+        policy_loss.backward()
+        torch.nn.utils.clip_grad_norm_(self.actor.parameters(), 1)
+        self.actor_optim.step()
+
         F_val = self.f_critic(state_batch, preference_batch)
         target_F_value = next_G_value - self.alpha*divergance_loss.clamp(-1, 1)
-        F_loss = F.mse_loss(F_val, target_F_value.detach())        
+        F_loss = F.mse_loss(F_val, target_F_value.detach())   
 
-        policy_loss = divergance_loss.mean()
+        self.f_optim.zero_grad()
+        F_loss.backward()
+        torch.nn.utils.clip_grad_norm_(self.f_critic.parameters(), 1)
+        self.f_optim.step()     
+
             
         if self.automatic_entropy_tuning:
             alpha_loss = -(self.log_alpha * (self.log_pi + self.target_entropy).detach()).mean()
         else:
             alpha_loss = torch.tensor(0.).to(self.device)
             alpha_tlogs = torch.tensor(self.alpha) # For TensorboardX logs
-
-        if updates % self.target_update_interval == 0:
-            soft_update(self.critic_target, self.critic, 1)
-
-            self.f_optim.zero_grad()
-            F_loss.backward()
-            torch.nn.utils.clip_grad_norm_(self.f_critic.parameters(), 1)
-            self.f_optim.step()
-
-            pi = self.actor.get_probs(state_batch, preference_batch)
-            ########################################################
-            G1_action0, G2_action0 = self.critic(state_batch, preference_batch)
-
-            G_action0 = torch.min(G1_action0, G2_action0)
-
-            prior = torch.softmax(G_action0, dim=1)
-
-            divergance_loss = self.divergance(pi, prior.detach())
-            divergance_loss = torch.sum(divergance_loss, dim=1).reshape(-1,1)
-
-            ########################################################
-            divergance_loss = self.divergance(pi, prior.detach())
-            divergance_loss = torch.sum(divergance_loss, dim=1).reshape(-1,1)
-            policy_loss = divergance_loss.mean()
-
-            self.actor_optim.zero_grad()
-            policy_loss.backward()
-            torch.nn.utils.clip_grad_norm_(self.actor.parameters(), 1)
-
-            self.actor_optim.step()
-                
-            # if (0.1*updates) % self.target_update_interval == 0:
-            #     print(G1_loss.item(), G_loss.item(), policy_loss.item(), F_loss.item())
             
         return G1_loss.item(), G_loss.item(), policy_loss.item(), alpha_loss.item(), alpha_tlogs.item()
 

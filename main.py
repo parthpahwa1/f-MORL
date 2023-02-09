@@ -33,20 +33,20 @@ parser.add_argument('--alpha', type=float, default=0.2, metavar='G',
 parser.add_argument('--automatic_entropy_tuning', type=bool, default=False, metavar='G',
                     help='Automaically adjust α (default: False)')
 parser.add_argument('--seed', type=int, default=123, metavar='N',
-                    help='random seed (default: 123456)')
+                    help='random seed (default: 123)')
 parser.add_argument('--batch_size', type=int, default=256, metavar='N',
                     help='batch size (default: 256)')
-parser.add_argument('--num_steps', type=int, default=1.5e6, metavar='N',
+parser.add_argument('--num_steps', type=int, default=int(1.5e6), metavar='N',
                     help='maximum number of steps (default: 1.5e6)')
-parser.add_argument('--num_episodes', type=int, default=3000, metavar='N',
-                    help='maximum number of episodes (default: 3000)')
+parser.add_argument('--num_episodes', type=int, default=int(1e5), metavar='N',
+                    help='maximum number of episodes (default: 1e5)')
 parser.add_argument('--hidden_size', type=int, default=512, metavar='N',
                     help='hidden size (default: 512)')
 parser.add_argument('--updates_per_step', type=int, default=1, metavar='N',
                     help='model updates per simulator step (default: 1)')
 parser.add_argument('--start_steps', type=int, default=10000, metavar='N',
                     help='Steps sampling random actions (default: 10000)')
-parser.add_argument('--target_update_interval', type=int, default= 10, metavar='N',
+parser.add_argument('--target_update_interval', type=int, default= 1, metavar='N',
                     help='Value target update per no. of updates per step (default: 1)')
 parser.add_argument('--replay_size', type=int, default=1000000, metavar='N',
                     help='size of replay buffer (default: 1000000)')
