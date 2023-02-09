@@ -37,7 +37,6 @@ class DiscreteMemory:
         pri =  np.array(self.priority_mem)
         pri = np.array([item.max() for item in pri])
         pri = pri / pri.sum()
-        print(pri, pri.shape)
         index_list = np.random.choice(
             range(len(self.buffer)), batch_size,
             replace=False,

@@ -17,6 +17,7 @@ def weights_init_(m):
         torch.nn.init.xavier_uniform_(m.weight, gain=1)
         torch.nn.init.constant_(m.bias, 0)
 
+
 class FT_F_Network(nn.Module):
     def __init__(self, num_inputs, num_preferences, hidden_dim):
         super(FT_F_Network, self).__init__()
@@ -44,7 +45,7 @@ class LL_F_Network(nn.Module):
         self.linear1 = nn.Linear(num_inputs+num_preferences, hidden_dim)
         self.linear2 = nn.Linear(hidden_dim, hidden_dim)
         self.linear2a = nn.Linear(hidden_dim, hidden_dim)
-        self.linear3 = nn.Linear(hidden_dim, 4)
+        self.linear3 = nn.Linear(hidden_dim, 1)
 
         self.apply(weights_init_)
 
@@ -96,16 +97,16 @@ class LL_G_Network(nn.Module):
         super(LL_G_Network, self).__init__()
         
         # Q1 architecture
-        self.linear1 = nn.Linear(num_inputs + num_preferences + 1, hidden_dim)
+        self.linear1 = nn.Linear(num_inputs + num_preferences+1, hidden_dim)
         self.linear2 = nn.Linear(hidden_dim, hidden_dim)
         self.linear2_a = nn.Linear(hidden_dim, hidden_dim)
-        self.linear3 = nn.Linear(hidden_dim, 4)
+        self.linear3 = nn.Linear(hidden_dim, 1)
 
         # Q2 architecture
-        self.linear4 = nn.Linear(num_inputs + num_preferences + 1, hidden_dim)
+        self.linear4 = nn.Linear(num_inputs + num_preferences+1, hidden_dim)
         self.linear5 = nn.Linear(hidden_dim, hidden_dim)
         self.linear5_a = nn.Linear(hidden_dim, hidden_dim)
-        self.linear6 = nn.Linear(hidden_dim, 4)
+        self.linear6 = nn.Linear(hidden_dim, 1)
 
         self.apply(weights_init_)
 
@@ -483,7 +484,7 @@ class LunarLanderSAC(object):
     
     def divergance(self, pi, prior):
         return pi*torch.log((pi+1e-10)/(prior+1e-10))
-    
+         
     def generate_neighbours(self, preference, next_preference, weight_num, speed=None):
         if speed is None:
             speed = torch.zeros((preference.shape[0] * (weight_num-1), 1))
@@ -540,26 +541,25 @@ class LunarLanderSAC(object):
         self.critic_optim.step()
 
         pi = self.actor.get_probs(state_batch, preference_batch)
-        
-        action_0 = torch.full(action_batch.shape, 0.).detach()
-        action_1 = torch.full(action_batch.shape, 1.0).detach()
+        ########################################################
+        G_list = []
+        for i in range(self.preference_batch.shape[1]):
+            temp = torch.full(action_batch.shape, float(i)).detach()
+            G1_action0, G2_action0 = self.critic(state_batch, preference_batch, temp)
 
-        G1_action0, G2_action0 = self.critic(state_batch, preference_batch, action_0)
-        G1_action1, G2_action1 = self.critic(state_batch, preference_batch, action_1)
+            G_action0 = torch.min(G1_action0, G2_action0)
+            G_list.append(G_action0)
 
-        G_action0 = torch.min(G1_action0, G2_action0)
-        G1_action1 = torch.min(G1_action1, G2_action1)
+        G_values = torch.cat(tuple(G_list), dim=1)
 
-        G_values = torch.cat((G_action0, G1_action1), dim=1)
         prior = torch.softmax(G_values, dim=1)
 
-        divergance_loss = self.divergance(pi, prior)
+        divergance_loss = self.divergance(pi, prior.detach())
         divergance_loss = torch.sum(divergance_loss, dim=1).reshape(-1,1)
+        ########################################################
         
         F_val = self.f_critic(state_batch, preference_batch)
-
         target_F_value = next_G_value - self.alpha*divergance_loss.clamp(-1, 1)
-
         F_loss = F.mse_loss(F_val, target_F_value.detach())        
 
         policy_loss = divergance_loss.mean()
@@ -579,19 +579,20 @@ class LunarLanderSAC(object):
             self.f_optim.step()
 
             pi = self.actor.get_probs(state_batch, preference_batch)
-        
-            action_0 = torch.full(action_batch.shape, 0.).detach()
-            action_1 = torch.full(action_batch.shape, 1.0).detach()
-            
-            G1_action0, G2_action0 = self.critic_target(state_batch, preference_batch, action_0)
-            G1_action1, G2_action1 = self.critic_target(state_batch, preference_batch, action_1)
+            ########################################################
+            G_list = []
+            for i in range(self.preference_batch.shape[1]):
+                temp = torch.full(action_batch.shape, float(i)).detach()
+                print(temp, temp.shape)
+                G1_action0, G2_action0 = self.critic(state_batch, preference_batch, temp)
 
-            G_action0 = torch.min(G1_action0, G2_action0)
-            G1_action1 = torch.min(G1_action1, G2_action1)
+                G_action0 = torch.min(G1_action0, G2_action0)
+                G_list.append(G_action0)
 
-            G_values = torch.cat((G_action0, G1_action1), dim=1)
+            G_values = torch.cat(tuple(G_list), dim=1)
             prior = torch.softmax(G_values, dim=1)
-
+            
+            ########################################################
             divergance_loss = self.divergance(pi, prior.detach())
             divergance_loss = torch.sum(divergance_loss, dim=1).reshape(-1,1)
             policy_loss = divergance_loss.mean()

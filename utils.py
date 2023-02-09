@@ -164,7 +164,7 @@ def train_ft(agent, env, memory, writer, args):
                 avg_reward += sum(eval_reward)/len(eval_reward)
 
             avg_reward = avg_reward/len(prob_list)
-            hyper = hypervolume(np.array([0,0,0,0,0,0]), reward_list)
+            hyper = hypervolume(args.num_preferences, reward_list)
 
             writer.add_scalar('Test Average Reward', avg_reward, i_episode)
             writer.add_scalar('Hypervolume', hyper, i_episode)
@@ -213,7 +213,6 @@ def train_ll(agent, env, memory, writer, args):
 
         while not done and episode_steps < 500 and i_episode < args.num_episodes:
             action = agent.select_action(state, probe, (i_episode+1)%2==0)  # Sample action from policy
-
             # epsilon
             # if (total_numsteps+1)%2==0:
             #     action = np.random.randint(0, 2)
@@ -276,7 +275,7 @@ def train_ll(agent, env, memory, writer, args):
                 avg_reward += sum(eval_reward)/len(eval_reward)
 
             avg_reward = avg_reward/len(prob_list)
-            hyper = hypervolume(np.array([0 for i in range(4)]), reward_list)
+            hyper = hypervolume(args.num_preferences, reward_list)
 
             writer.add_scalar('Test Average Reward', avg_reward, i_episode)
             writer.add_scalar('Hypervolume', hyper, i_episode)
@@ -360,7 +359,7 @@ def train_hopper(agent, env, memory, writer, args):
         writer.add_scalar('reward/train', episode_reward, i_episode)
         # print("Episode: {}, total numsteps: {}, episode steps: {}, reward: {}".format(i_episode, total_numsteps, episode_steps, round(episode_reward, 2)))
 
-        if i_episode % 250 == 0 and args.eval is True:
+        if i_episode % 10 == 0 and args.eval is True:
             avg_reward = 0.
 
             eval_reward = []
@@ -387,7 +386,7 @@ def train_hopper(agent, env, memory, writer, args):
                 avg_reward += sum(eval_reward)/len(eval_reward)
 
             avg_reward = avg_reward/len(prob_list)
-            hyper = hypervolume(np.array([0,0,0]), reward_list)
+            hyper = hypervolume(np.zeros(args.num_preferences), reward_list)
 
             writer.add_scalar('Test Average Reward', avg_reward, i_episode)
             writer.add_scalar('Hypervolume', hyper, i_episode)
