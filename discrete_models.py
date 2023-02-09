@@ -543,7 +543,7 @@ class LunarLanderSAC(object):
         pi = self.actor.get_probs(state_batch, preference_batch)
         ########################################################
         G_list = []
-        for i in range(self.preference_batch.shape[1]):
+        for i in range(preference_batch.shape[1]):
             temp = torch.full(action_batch.shape, float(i)).detach()
             G1_action0, G2_action0 = self.critic(state_batch, preference_batch, temp)
 
@@ -581,9 +581,8 @@ class LunarLanderSAC(object):
             pi = self.actor.get_probs(state_batch, preference_batch)
             ########################################################
             G_list = []
-            for i in range(self.preference_batch.shape[1]):
+            for i in range(preference_batch.shape[1]):
                 temp = torch.full(action_batch.shape, float(i)).detach()
-                print(temp, temp.shape)
                 G1_action0, G2_action0 = self.critic(state_batch, preference_batch, temp)
 
                 G_action0 = torch.min(G1_action0, G2_action0)
@@ -591,7 +590,7 @@ class LunarLanderSAC(object):
 
             G_values = torch.cat(tuple(G_list), dim=1)
             prior = torch.softmax(G_values, dim=1)
-            
+
             ########################################################
             divergance_loss = self.divergance(pi, prior.detach())
             divergance_loss = torch.sum(divergance_loss, dim=1).reshape(-1,1)
