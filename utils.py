@@ -86,7 +86,7 @@ def generate_next_preference_gaussian(preference, alpha=0.2):
 
 def discrete_train(agent, env, memory, writer, args):
     rng = np.random.RandomState(args.seed)
-    pref_list = rng.rand(1000, args.num_preferences)
+    pref_list = rng.rand(5000, args.num_preferences)
     pref_list = pref_list/np.sum(pref_list, axis=1)[:, None]
     pref_list = torch.FloatTensor(pref_list)
 
@@ -102,7 +102,6 @@ def discrete_train(agent, env, memory, writer, args):
 
         pref = rng.randn(args.num_preferences)
         pref = torch.FloatTensor(pref/np.sum(pref))
-        # probe = generate_next_preference(np.abs(probe)/np.linalg.norm(probe, ord=1), alpha=args.alpha)
 
         while not done and episode_steps < 500:
             action = agent.select_action(state, pref)  # Sample action from policy
@@ -159,20 +158,27 @@ def discrete_train(agent, env, memory, writer, args):
                 # value_g3 = agent.critic_target(torch.FloatTensor(state.reshape(1,-1)), eval_pref.reshape(1,-1), torch.FloatTensor(np.array([[3.0]])))[0]
                 done = False
 
+                temp_reward = np.zeros(args.num_preferences)
+                count = 0
                 while not done:
-                    action = agent.select_action(state, eval_pref)
+                    action = agent.act(state, eval_pref)
                     next_state, reward, done, _, _ = env.step(action)
-                    
+
+                    temp_reward = temp_reward + reward * np.power(args.gamma, count)  
+
                     if done:
-                        reward_list.append(reward)
+                        reward_list.append(temp_reward)
                         eval_reward.append(np.dot(temp_pref, reward))
                     else:
                         pass
 
                     state = next_state
 
+                    count += 1
+
                 # Use the mean reward for the hypervolume calculation
 
+            reward_list = np.array(list(set([tuple(i) for i in reward_list])))
             avg_reward = sum(eval_reward)/len(eval_reward)
 
             print("Calculating Hypervolume")
@@ -263,7 +269,7 @@ def train_hopper(agent, env, memory, writer, args):
         writer.add_scalar('reward/train', episode_reward, i_episode)
         # print("Episode: {}, total numsteps: {}, episode steps: {}, reward: {}".format(i_episode, total_numsteps, episode_steps, round(episode_reward, 2)))
 
-        if i_episode % 10 == 0 and args.eval is True:
+        if i_episode % 10 == 0:
             avg_reward = 0.
 
             eval_reward = []
@@ -318,3 +324,4 @@ def train_hopper(agent, env, memory, writer, args):
 
         env.close()
 
+      

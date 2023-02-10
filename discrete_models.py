@@ -135,7 +135,6 @@ class DiscreteSAC(object):
 
         self.gamma = args.gamma
         self.tau = args.tau
-        self.policy_type = args.policy
         self.alpha = args.alpha
         
         device = ""
@@ -167,6 +166,14 @@ class DiscreteSAC(object):
         preference = torch.FloatTensor(preference).to(self.device).unsqueeze(0)
 
         action, _, _ = self.actor.sample(state, preference)
+
+        return action.detach().cpu().numpy()[0]
+    
+    def act(self, state, preference):
+        state = torch.Tensor(state).to(self.device).unsqueeze(0)
+        preference = torch.FloatTensor(preference).to(self.device).unsqueeze(0)
+
+        _, _, action = self.actor.sample(state, preference)
 
         return action.detach().cpu().numpy()[0]
     
