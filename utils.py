@@ -183,7 +183,7 @@ def discrete_train(agent, env, memory, writer, args):
 
             print("Calculating Hypervolume")
             tock = time.perf_counter()
-            hyper = hypervolume(np.zeros(args.num_preferences), reward_list)
+            hyper = hypervolume(args.ref_point, reward_list)
             tick = time.perf_counter()
             print(f"Calculated Hypervolume in {round(tick-tock,2)}s")
 
@@ -229,7 +229,7 @@ def train_hopper(agent, env, memory, writer, args):
         done = False
         state, _ = env.reset()
         
-        probe = np.random.randn(args.num_preferences)
+        probe = np.random.rand(args.num_preferences)
         probe = generate_next_preference(np.abs(probe)/np.linalg.norm(probe, ord=1), alpha=args.alpha)
 
         while not done and episode_steps < 500 and i_episode < args.num_episodes:

@@ -29,8 +29,8 @@ parser.add_argument('--batch_size', type=int, default=128, metavar='N',
                     help='batch size (default: 128)')
 parser.add_argument('--num_steps', type=int, default=int(1.5e6), metavar='N',
                     help='maximum number of steps (default: 1.5e6)')
-parser.add_argument('--num_episodes', type=int, default=5000, metavar='N',
-                    help='maximum number of episodes (default: 5000)')
+parser.add_argument('--num_episodes', type=int, default=3100, metavar='N',
+                    help='maximum number of episodes (default: 3000)')
 parser.add_argument('--hidden_size', type=int, default=512, metavar='N',
                     help='hidden size (default: 512)')
 parser.add_argument('--updates_per_step', type=int, default=1, metavar='N',
@@ -89,6 +89,7 @@ if __name__ == "__main__":
         args.num_weights = 4
         args.action_space = env.action_space
         args.num_inputs = env.observation_space.shape[0]
+        args.ref_point = np.zeros(args.num_preferences)
 
         agent = DiscreteSAC(args.num_inputs, args)
 
@@ -104,6 +105,7 @@ if __name__ == "__main__":
         args.num_weights = 4
         args.action_space = env.action_space
         args.num_inputs = env.observation_space.shape[0]
+        args.ref_point = np.array([-100, -100, -100, -100])
 
         agent = DiscreteSAC(args.num_inputs, args)
 
@@ -119,6 +121,7 @@ if __name__ == "__main__":
         args.num_weights = 4
         args.action_space = env.action_space
         args.num_inputs = env.observation_space.shape[0]
+        args.ref_point = np.array([0,-19])
 
         agent = DiscreteSAC(args.num_inputs, args)
 
