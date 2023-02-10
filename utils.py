@@ -2,6 +2,7 @@ import math
 import torch
 import itertools
 import numpy as np
+import time 
 from pymoo.indicators.hv import HV
 
 from typing import List, Optional, Tuple, Union
@@ -38,8 +39,8 @@ def hypervolume(ref_point: np.ndarray, points: List[np.ndarray], args) -> float:
         ind = HV(ref_point=ref_point)
         return ind(np.array(points))
     elif args.env_name == "deep-sea-treasure-v0":
-        ind = HV(ref_point=ref_point)
-        return ind(np.array(points))
+        ind = HV(ref_point=ref_point*-1)
+        return ind(np.array(points)*-1)
     else:
         ind = HV(ref_point=ref_point*-1)
         return ind(np.array(points)*-1)
@@ -113,11 +114,13 @@ def discrete_train(agent, env, memory, writer, args):
 
         while not done and episode_steps < 500:
             action = agent.select_action(state, probe)  # Sample action from policy
+            
             # epsilon
-            if (total_numsteps+1)%4==0:
+            if (total_numsteps+1)%10==0:
                 action = rng.randint(0, args.action_space.n)
 
-            if len(memory) > args.batch_size:
+            # If the number of steps is devisible by the batch size perform an update
+            if (len(memory)  > args.batch_size) and (i_episode != 0):
                 # Number of updates per step in environment
                 for i in range(args.updates_per_step):
                     critic_1_loss, critic_2_loss, policy_loss = agent.update_parameters(memory, args.batch_size, updates)
@@ -126,7 +129,7 @@ def discrete_train(agent, env, memory, writer, args):
                     writer.add_scalar('loss/critic_2', critic_2_loss, updates)
                     writer.add_scalar('loss/policy', policy_loss, updates)
                     # writer.add_scalar('loss/entropy_loss', ent_loss, updates)
-                    writer.add_scalar('entropy_temprature/alpha', args.alpha, updates)
+                    # writer.add_scalar('entropy_temprature/alpha', args.alpha, updates)
                     updates += 1
             
             next_state, reward, done, truncated, info = env.step(action) # Step
@@ -163,18 +166,34 @@ def discrete_train(agent, env, memory, writer, args):
                 # # value_g2 = agent.critic_target(torch.FloatTensor(state.reshape(1,-1)), eval_pref.reshape(1,-1), torch.FloatTensor(np.array([[2.0]])))[0]
                 # value_g3 = agent.critic_target(torch.FloatTensor(state.reshape(1,-1)), eval_pref.reshape(1,-1), torch.FloatTensor(np.array([[3.0]])))[0]
                 done = False
+
+                temp_reward_list = []
                 while not done:
                     action = agent.select_action(state, eval_pref)
                     next_state, reward, done, _, _ = env.step(action)
                     
-                    reward_list.append(reward)
-                    eval_reward.append(np.dot(temp_pref, reward))
+                    # We can skip over zero rewards in our evaluation
+                    if np.dot(reward, reward) != 0:
+                        temp_reward_list.append(reward)
+                        eval_reward.append(np.dot(temp_pref, reward))
+                    elif done:
+                        temp_reward_list.append(reward)
+                        eval_reward.append(np.dot(temp_pref, reward))
+                    else:
+                        pass
 
                     state = next_state
 
+                # Use the mean reward for the hypervolume calculation
+                reward_list.append(sum(temp_reward_list)/len(temp_reward_list))
+
             avg_reward = sum(eval_reward)/len(eval_reward)
-            
+
+            print("Calculating Hypervolume")
+            tock = time.perf_counter()
             hyper = hypervolume(np.zeros(args.num_preferences), reward_list, args)
+            tick = time.perf_counter()
+            print(f"Calculated Hypervolume in {round(tick-tock)}s")
 
             writer.add_scalar('Test Average Reward', avg_reward, i_episode)
             writer.add_scalar('Hypervolume', hyper, i_episode)
