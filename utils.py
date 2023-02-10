@@ -100,7 +100,7 @@ def discrete_train(agent, env, memory, writer, args):
         done = False
         state, _ = env.reset()
 
-        pref = rng.randn(args.num_preferences)
+        pref = rng.rand(args.num_preferences)
         pref = torch.FloatTensor(pref/np.sum(pref))
 
         while not done and episode_steps < 500:

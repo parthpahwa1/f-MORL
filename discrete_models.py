@@ -222,7 +222,7 @@ class DiscreteSAC(object):
         preference_batch = torch.FloatTensor(preference_batch).to(self.device)
         next_preference_batch = torch.FloatTensor(next_preference_batch).to(self.device)
         
-        pref = self.rng.randn(preference_batch.shape[0]*(self.n_weights-1), self.args.num_preferences)
+        pref = self.rng.rand(preference_batch.shape[0]*(self.n_weights-1), self.args.num_preferences)
         pref = torch.FloatTensor(pref/np.sum(pref))
 
         preference_batch = torch.cat((preference_batch, pref), dim=0)
