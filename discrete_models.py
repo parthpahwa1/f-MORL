@@ -132,14 +132,12 @@ class DiscreteSAC(object):
         self.n_weights = args.num_weights
 
         self.target_update_interval = args.target_update_interval
-        self.automatic_entropy_tuning = args.automatic_entropy_tuning
 
         self.gamma = args.gamma
         self.tau = args.tau
         self.policy_type = args.policy
         self.alpha = args.alpha
         
-
         device = ""
         if args.cuda:
             device = "cuda"
@@ -164,14 +162,12 @@ class DiscreteSAC(object):
 
         return None
     
-    def select_action(self, state, preference, evaluate=False):
+    def select_action(self, state, preference):
         state = torch.Tensor(state).to(self.device).unsqueeze(0)
         preference = torch.FloatTensor(preference).to(self.device).unsqueeze(0)
 
-        if evaluate is False:
-            action, _, _ = self.actor.sample(state, preference)
-        else:
-            _, _, action = self.actor.sample(state, preference)
+        action, _, _ = self.actor.sample(state, preference)
+
         return action.detach().cpu().numpy()[0]
     
     def divergance(self, pi, prior):
@@ -194,29 +190,6 @@ class DiscreteSAC(object):
         else:
             pass
          
-    def generate_neighbours(self, preference, next_preference, weight_num, speed=None):
-        if speed is None:
-            speed = torch.zeros((preference.shape[0] * (weight_num-1), 1))
-
-        preference_neigbor = preference.clone().detach()
-        next_preference_neigbor = next_preference.clone().detach()
-
-        new_preference = np.random.randn(preference.shape[0] * (weight_num-1), preference.shape[1])
-        new_preference = np.abs(new_preference)/np.linalg.norm(new_preference, ord=1,axis=1)[:,None]
-
-        cov = np.identity(new_preference.shape[1])*0.000001
-
-        new_next_preference = np.array([np.random.multivariate_normal(tensor, cov*cov_speed.reshape(-1)[0].item(), 1)[0] for tensor, cov_speed in zip(new_preference, speed)])
-
-        new_next_preference[new_next_preference < 0] = 0
-        new_next_preference += 1e-9
-        new_next_preference = new_next_preference/np.sum(new_next_preference, axis=1)[:,None]
-
-        preference_neigbor = torch.cat((preference_neigbor, torch.FloatTensor(new_preference)), dim=0)
-        next_preference_neigbor = torch.cat((next_preference_neigbor, torch.FloatTensor(new_next_preference)), dim=0)
-
-        return preference_neigbor, next_preference_neigbor
-
     def update_parameters(self, memory, batch_size, updates):
         # Sample a batch from memory
         state_batch, preference_batch, action_batch, reward_batch, next_state_batch, next_preference_batch, mask_batch = memory.sample(batch_size=batch_size)
@@ -277,15 +250,8 @@ class DiscreteSAC(object):
         F_loss.backward()
         torch.nn.utils.clip_grad_norm_(self.f_critic.parameters(), 1)
         self.f_optim.step()     
-
             
-        if self.automatic_entropy_tuning:
-            alpha_loss = -(self.log_alpha * (self.log_pi + self.target_entropy).detach()).mean()
-        else:
-            alpha_loss = torch.tensor(0.).to(self.device)
-            alpha_tlogs = torch.tensor(self.alpha) # For TensorboardX logs
-            
-        return G1_loss.item(), G_loss.item(), policy_loss.item(), alpha_loss.item(), alpha_tlogs.item()
+        return G1_loss.item(), G_loss.item(), policy_loss.item()
 
     # Save model parameters
     def save_checkpoint(self, env_name, suffix="", ckpt_path=None):

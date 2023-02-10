@@ -27,12 +27,10 @@ parser.add_argument('--tau', type=float, default=0.005, metavar='G',
                     help='target smoothing coefficient(τ) (default: 0.005)')
 parser.add_argument('--lr', type=float, default=3e-4, metavar='G',
                     help='learning rate (default: 0.0003)')
-parser.add_argument('--automatic_entropy_tuning', type=bool, default=False, metavar='G',
-                    help='Automaically adjust α (default: False)')
 parser.add_argument('--seed', type=int, default=123, metavar='N',
                     help='random seed (default: 123)')
-parser.add_argument('--batch_size', type=int, default=128, metavar='N',
-                    help='batch size (default: 128)')
+parser.add_argument('--batch_size', type=int, default=256, metavar='N',
+                    help='batch size (default: 256)')
 parser.add_argument('--num_steps', type=int, default=int(1.5e6), metavar='N',
                     help='maximum number of steps (default: 1.5e6)')
 parser.add_argument('--num_episodes', type=int, default=int(1e5), metavar='N',
@@ -45,8 +43,8 @@ parser.add_argument('--start_steps', type=int, default=10000, metavar='N',
                     help='Steps sampling random actions (default: 10000)')
 parser.add_argument('--target_update_interval', type=int, default= 1, metavar='N',
                     help='Value target update per no. of updates per step (default: 1)')
-parser.add_argument('--replay_size', type=int, default=1000000, metavar='N',
-                    help='size of replay buffer (default: 1000000)')
+parser.add_argument('--replay_size', type=int, default=int(1e6), metavar='N',
+                    help='size of replay buffer (default: 1e6)')
 parser.add_argument('--cuda', action="store_true",
                     help='run on CUDA (default: False)')
 parser.add_argument('--mps', action="store_true",
@@ -98,8 +96,7 @@ if __name__ == "__main__":
 
         agent = DiscreteSAC(args.num_inputs, args)
 
-        writer = SummaryWriter('./FruitTree_v0/{}_SAC_{}_{}_{}'.format(datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S"), args.env_name,
-                                                                    args.policy, "autotune" if args.automatic_entropy_tuning else ""))
+        writer = SummaryWriter(f'./FruitTree_v0/{datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")}_SAC_{args.env_name}_{args.divergence}_{args.alpha}')
         
         memory = DiscreteMemory(args.replay_size,  args.gamma, args.seed)
 
@@ -114,9 +111,8 @@ if __name__ == "__main__":
 
         agent = DiscreteSAC(args.num_inputs, args)
 
-        writer = SummaryWriter('./LunarLander_v2/{}_SAC_{}_{}_{}'.format(datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S"), args.env_name,
-                                                                    args.policy, "autotune" if args.automatic_entropy_tuning else ""))
-        
+        writer = SummaryWriter(f'./LunarLander_v2/{datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")}_SAC_{args.env_name}_{args.divergence}_{args.alpha}')
+
         memory = DiscreteMemory(args.replay_size,  args.gamma, args.seed)
 
         discrete_train(agent, env, memory, writer, args)
@@ -130,9 +126,8 @@ if __name__ == "__main__":
 
         agent = DiscreteSAC(args.num_inputs, args)
 
-        writer = SummaryWriter('./DeepSeaTreasure_v0/{}_SAC_{}_{}_{}'.format(datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S"), args.env_name,
-                                                                    args.policy, "autotune" if args.automatic_entropy_tuning else ""))
-        
+        writer = SummaryWriter(f'./DeepSeaTreasure_v0/{datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")}_SAC_{args.env_name}_{args.divergence}_{args.alpha}')
+
         memory = DiscreteMemory(args.replay_size,  args.gamma, args.seed)
 
         discrete_train(agent, env, memory, writer, args)
