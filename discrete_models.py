@@ -162,6 +162,7 @@ class DiscreteSAC(object):
         self.critic_optim = Adam(self.critic.parameters())
 
         self.critic_target = Discrete_G_Network(self.num_inputs, self.n_preferences, self.action_dim, args.hidden_size).to(device)
+
         hard_update(self.critic_target, self.critic)
 
         self.f_critic = Discrete_F_Network(self.num_inputs, self.n_preferences, self.action_dim, args.hidden_size).to(device)
@@ -252,7 +253,7 @@ class DiscreteSAC(object):
 
         pi = self.actor.get_probs(state_batch, preference_batch)
 
-        G1_action0, G2_action0 = self.critic(state_batch, preference_batch)
+        G1_action0, G2_action0 = self.critic_target(state_batch, preference_batch)
         G_action0 = torch.min(G1_action0, G2_action0)
 
         prior = torch.softmax(G_action0, dim=1)
@@ -275,8 +276,11 @@ class DiscreteSAC(object):
         F_loss.backward()
         torch.nn.utils.clip_grad_norm_(self.f_critic.parameters(), 1)
         self.f_optim.step()     
-            
-        return G1_loss.item(), G_loss.item(), policy_loss.item()
+        
+
+        soft_update(self.critic_target, self.critic, self.tau)
+
+        return G_loss.item(), F_loss.item(), policy_loss.item()
 
     # Save model parameters
     def save_checkpoint(self, env_name, suffix="", ckpt_path=None):
