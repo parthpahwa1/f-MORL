@@ -107,7 +107,7 @@ def discrete_train(agent, env, memory, writer, args):
             action = agent.select_action(state, pref)  # Sample action from policy
 
             # epsilon
-            if (total_numsteps+1)%10==0:
+            if (total_numsteps+1)%2==0:
                 action = rng.randint(0, args.action_space.n)
 
             # If the number of steps is devisible by the batch size perform an update
@@ -135,7 +135,7 @@ def discrete_train(agent, env, memory, writer, args):
 
             state = next_state
 
-        if total_numsteps > args.num_steps or i_episode >= args.num_steps:
+        if total_numsteps > args.num_steps or i_episode >= args.num_episodes:
             break
 
         writer.add_scalar('reward/train', episode_reward, i_episode)

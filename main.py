@@ -21,16 +21,16 @@ parser.add_argument('--gamma', type=float, default=0.99, metavar='G',
                     help='discount factor for reward (default: 0.99)')
 parser.add_argument('--tau', type=float, default=0.005, metavar='G',
                     help='target smoothing coefficient(τ) (default: 0.005)')
-parser.add_argument('--lr', type=float, default=3e-4, metavar='G',
-                    help='learning rate (default: 0.0003)')
+parser.add_argument('--lr', type=float, default=1e-3, metavar='G',
+                    help='learning rate (default: 1e-3)')
 parser.add_argument('--seed', type=int, default=123, metavar='N',
                     help='random seed (default: 123)')
 parser.add_argument('--batch_size', type=int, default=128, metavar='N',
                     help='batch size (default: 128)')
 parser.add_argument('--num_steps', type=int, default=int(1.5e6), metavar='N',
                     help='maximum number of steps (default: 1.5e6)')
-parser.add_argument('--num_episodes', type=int, default=int(1e5), metavar='N',
-                    help='maximum number of episodes (default: 1e5)')
+parser.add_argument('--num_episodes', type=int, default=5000, metavar='N',
+                    help='maximum number of episodes (default: 5000)')
 parser.add_argument('--hidden_size', type=int, default=512, metavar='N',
                     help='hidden size (default: 512)')
 parser.add_argument('--updates_per_step', type=int, default=1, metavar='N',
@@ -39,8 +39,8 @@ parser.add_argument('--start_steps', type=int, default=10000, metavar='N',
                     help='Steps sampling random actions (default: 10000)')
 parser.add_argument('--target_update_interval', type=int, default= 1, metavar='N',
                     help='Value target update per no. of updates per step (default: 1)')
-parser.add_argument('--replay_size', type=int, default=int(1e6), metavar='N',
-                    help='size of replay buffer (default: 1e6)')
+parser.add_argument('--replay_size', type=int, default=4000, metavar='N',
+                    help='size of replay buffer (default: 4000)')
 parser.add_argument('--cuda', action="store_true",
                     help='run on CUDA (default: False)')
 parser.add_argument('--mps', action="store_true",
