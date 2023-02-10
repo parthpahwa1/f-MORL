@@ -22,19 +22,23 @@ class Discrete_F_Network(nn.Module):
     def __init__(self, num_inputs, num_preferences, action_dim, hidden_dim):
         super(Discrete_F_Network, self).__init__()
 
-        self.linear1 = nn.Linear(num_inputs+num_preferences, hidden_dim)
-        self.linear2 = nn.Linear(hidden_dim, hidden_dim)
-        self.linear2a = nn.Linear(hidden_dim, hidden_dim)
-        self.linear3 = nn.Linear(hidden_dim, action_dim)
+        self.linear1 = nn.Linear(num_inputs + num_preferences, (num_inputs + num_preferences)*16)
+        self.linear2a = nn.Linear((num_inputs + num_preferences)*16, (num_inputs + num_preferences)*32)
+        self.linear2b = nn.Linear((num_inputs + num_preferences)*32, (num_inputs + num_preferences)*64)
+        self.linear2c = nn.Linear((num_inputs + num_preferences)*64, (num_inputs + num_preferences)*32)
+        self.mean_linear1 = nn.Linear((num_inputs + num_preferences)*32, 1)
 
         self.apply(weights_init_)
 
     def forward(self, state, preference):
         input = torch.cat([state, preference], 1)
+
         x = F.relu(self.linear1(input))
-        x = F.relu(self.linear2(x))
         x = F.relu(self.linear2a(x))
-        x = self.linear3(x)
+        x = F.relu(self.linear2b(x))
+        x = F.relu(self.linear2c(x))
+        x = self.mean_linear1(x)
+
         return x
 
 
@@ -43,31 +47,36 @@ class Discrete_G_Network(nn.Module):
         super(Discrete_G_Network, self).__init__()
         
         # Q1 architecture
-        self.linear1 = nn.Linear(num_inputs + num_preferences, hidden_dim)
-        self.linear2 = nn.Linear(hidden_dim, hidden_dim)
-        self.linear2_a = nn.Linear(hidden_dim, hidden_dim)
-        self.linear3 = nn.Linear(hidden_dim, action_dim)
+        self.linear1 = nn.Linear(num_inputs + num_preferences, (num_inputs + num_preferences)*16)
+        self.linear2a = nn.Linear((num_inputs + num_preferences)*16, (num_inputs + num_preferences)*32)
+        self.linear2b = nn.Linear((num_inputs + num_preferences)*32, (num_inputs + num_preferences)*64)
+        self.linear2c = nn.Linear((num_inputs + num_preferences)*64, (num_inputs + num_preferences)*32)
+        self.mean_linear1 = nn.Linear((num_inputs + num_preferences)*32, action_dim)
 
         # Q2 architecture
-        self.linear4 = nn.Linear(num_inputs + num_preferences, hidden_dim)
-        self.linear5 = nn.Linear(hidden_dim, hidden_dim)
-        self.linear5_a = nn.Linear(hidden_dim, hidden_dim)
-        self.linear6 = nn.Linear(hidden_dim, action_dim)
+        self.linear3= nn.Linear(num_inputs + num_preferences, (num_inputs + num_preferences)*16)
+        self.linear4a = nn.Linear((num_inputs + num_preferences)*16, (num_inputs + num_preferences)*32)
+        self.linear4b = nn.Linear((num_inputs + num_preferences)*32, (num_inputs + num_preferences)*64)
+        self.linear4c = nn.Linear((num_inputs + num_preferences)*64, (num_inputs + num_preferences)*32)
+        self.mean_linear2 = nn.Linear((num_inputs + num_preferences)*32, action_dim)
 
         self.apply(weights_init_)
+        return None
 
     def forward(self, state, preference):
         xu = torch.cat([state, preference], 1)
         
         x1 = F.relu(self.linear1(xu))
-        x1 = F.relu(self.linear2(x1))
-        x1 = F.relu(self.linear2_a(x1))
-        x1 = self.linear3(x1)
+        x1 = F.relu(self.linear2a(x1))
+        x1 = F.relu(self.linear2b(x1))
+        x1 = F.relu(self.linear2c(x1))
+        x1 = self.mean_linear1(x1)
         
-        x2 = F.relu(self.linear4(xu))
-        x2 = F.relu(self.linear5(x2))
-        x2 = F.relu(self.linear5_a(x2))
-        x2 = self.linear6(x2)
+        x2 = F.relu(self.linear3(xu))
+        x2 = F.relu(self.linear4a(x2))
+        x2 = F.relu(self.linear4b(x2))
+        x2 = F.relu(self.linear4c(x2))
+        x2 = self.mean_linear2(x2)
 
         return x1, x2
 
@@ -76,11 +85,11 @@ class DiscreteGaussianPolicy(nn.Module):
     def __init__(self, num_inputs, num_preferences, action_dim, hidden_dim):
         super(DiscreteGaussianPolicy, self).__init__()
         
-        self.linear1 = nn.Linear(num_inputs + num_preferences, hidden_dim)
-        self.linear2a = nn.Linear(hidden_dim, hidden_dim)
-        self.linear2b = nn.Linear(hidden_dim, hidden_dim)
-        self.linear2c = nn.Linear(hidden_dim, hidden_dim)
-        self.mean_linear = nn.Linear(hidden_dim, action_dim)
+        self.linear1 = nn.Linear(num_inputs + num_preferences, (num_inputs + num_preferences)*16)
+        self.linear2a = nn.Linear((num_inputs + num_preferences)*16, (num_inputs + num_preferences)*32)
+        self.linear2b = nn.Linear((num_inputs + num_preferences)*32, (num_inputs + num_preferences)*64)
+        self.linear2c = nn.Linear((num_inputs + num_preferences)*64, (num_inputs + num_preferences)*32)
+        self.mean_linear = nn.Linear((num_inputs + num_preferences)*32, action_dim)
 
         self.apply(weights_init_)
 
@@ -124,6 +133,8 @@ class DiscreteSAC(object):
         self.num_inputs = num_inputs
 
         self.args = args
+
+        self.rng = np.random.RandomState(args.seed)
 
         self.action_space = args.action_space
         self.num_actions = args.action_space.n
@@ -201,27 +212,36 @@ class DiscreteSAC(object):
         # Sample a batch from memory
         state_batch, preference_batch, action_batch, reward_batch, next_state_batch, next_preference_batch, mask_batch = memory.sample(batch_size=batch_size)
 
-        state_batch = torch.FloatTensor(state_batch).to(self.device)
-        next_state_batch = torch.FloatTensor(next_state_batch).to(self.device)
-        action_batch = torch.FloatTensor(action_batch).to(self.device).reshape(-1, 1)
-        reward_batch = torch.FloatTensor(reward_batch).to(self.device)
-        mask_batch = torch.FloatTensor(mask_batch).to(self.device).unsqueeze(1)
+        state_batch = torch.FloatTensor(state_batch).repeat(self.n_weights,1).to(self.device)
+        next_state_batch = torch.FloatTensor(next_state_batch).repeat(self.n_weights,1).to(self.device)
+        action_batch = torch.LongTensor(action_batch).repeat(self.n_weights,1).to(self.device).reshape(-1, 1)
+        reward_batch = torch.FloatTensor(reward_batch).repeat(self.n_weights,1).to(self.device)
+        mask_batch = torch.FloatTensor(mask_batch).repeat(self.n_weights).to(self.device).unsqueeze(1)
 
         preference_batch = torch.FloatTensor(preference_batch).to(self.device)
         next_preference_batch = torch.FloatTensor(next_preference_batch).to(self.device)
         
+        pref = self.rng.randn(preference_batch.shape[0]*(self.n_weights-1), self.args.num_preferences)
+        pref = torch.FloatTensor(pref/np.sum(pref))
+
+        preference_batch = torch.cat((preference_batch, pref), dim=0)
+        next_preference_batch = torch.cat((next_preference_batch, pref), dim=0)
+
         with torch.no_grad():
             reward = torch.sum(preference_batch * reward_batch, dim=-1).reshape(-1,1)
             F_next_target = self.f_critic(next_state_batch, next_preference_batch)
             next_G_value = reward + mask_batch * self.gamma * (F_next_target)
         
         # Two Q-functions to mitigate positive bias in the policy improvement step
-        G1, G2 = self.critic(state_batch, preference_batch)  
+        G1, G2 = self.critic(state_batch, preference_batch)
+        
+        G1 = G1.gather(1,action_batch)
+        G2 = G2.gather(1,action_batch)
         
         # JQ = 𝔼(st,at)~D[0.5(Q1(st,at) - r(st,at) - γ(𝔼st+1~p[V(st+1)]))^2]
         G1_loss = F.smooth_l1_loss(G1, next_G_value)  
         G2_loss = F.smooth_l1_loss(G2, next_G_value)  
-        
+
         G_loss = G1_loss + G2_loss
 
         # Critic Backwards Step
@@ -233,11 +253,9 @@ class DiscreteSAC(object):
         pi = self.actor.get_probs(state_batch, preference_batch)
 
         G1_action0, G2_action0 = self.critic(state_batch, preference_batch)
-
         G_action0 = torch.min(G1_action0, G2_action0)
 
         prior = torch.softmax(G_action0, dim=1)
-
         divergance_loss = self.divergance(pi, prior.detach())
         divergance_loss = torch.sum(divergance_loss, dim=1).reshape(-1,1)
         policy_loss = divergance_loss.mean()
