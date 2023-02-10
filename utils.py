@@ -2,6 +2,7 @@ import math
 import torch
 import itertools
 import numpy as np
+import time 
 from pymoo.indicators.hv import HV
 
 from typing import List, Optional, Tuple, Union
@@ -31,7 +32,8 @@ def hypervolume(ref_point: np.ndarray, points: List[np.ndarray]) -> float:
     Returns:
         float: Hypervolume metric
     """
-    return HV(ref_point=ref_point * -1)(np.array(points) * -1)
+    ind = HV(ref_point=ref_point*-1)
+    return ind(np.array(points)*-1)
 
 
 def create_log_gaussian(mean, log_std, t):
@@ -84,8 +86,9 @@ def generate_next_preference_gaussian(preference, alpha=0.2):
 
 def discrete_train(agent, env, memory, writer, args):
     rng = np.random.RandomState(args.seed)
-    pref_list = rng.rand(10, args.num_preferences)
-    pref_list = [torch.FloatTensor(item/sum(item)) for item in pref_list]
+    pref_list = rng.rand(1000, args.num_preferences)
+    pref_list = pref_list/np.sum(pref_list, axis=1)[:, None]
+    pref_list = torch.FloatTensor(pref_list)
 
     total_numsteps = 0
     updates = 0
@@ -97,37 +100,40 @@ def discrete_train(agent, env, memory, writer, args):
         done = False
         state, _ = env.reset()
 
-        probe = np.random.randn(args.num_preferences)
-        probe = generate_next_preference(np.abs(probe)/np.linalg.norm(probe, ord=1), alpha=args.alpha)
+        pref = rng.randn(args.num_preferences)
+        pref = torch.FloatTensor(pref/np.sum(pref))
+        # probe = generate_next_preference(np.abs(probe)/np.linalg.norm(probe, ord=1), alpha=args.alpha)
 
         while not done and episode_steps < 500:
-            action = agent.select_action(state, probe, (i_episode+1)%2==0)  # Sample action from policy
+            action = agent.select_action(state, pref)  # Sample action from policy
+
             # epsilon
             if (total_numsteps+1)%10==0:
                 action = rng.randint(0, args.action_space.n)
 
-            if len(memory) > args.batch_size:
+            # If the number of steps is devisible by the batch size perform an update
+            if (len(memory) > args.batch_size) and (i_episode != 0):
                 # Number of updates per step in environment
                 for i in range(args.updates_per_step):
-                    critic_1_loss, critic_2_loss, policy_loss, ent_loss, args.alpha = agent.update_parameters(memory, args.batch_size, updates)
+                    critic_1_loss, critic_2_loss, policy_loss = agent.update_parameters(memory, args.batch_size, updates)
                     # Update parameters of all the networks
                     writer.add_scalar('loss/critic_1', critic_1_loss, updates)
                     writer.add_scalar('loss/critic_2', critic_2_loss, updates)
                     writer.add_scalar('loss/policy', policy_loss, updates)
                     # writer.add_scalar('loss/entropy_loss', ent_loss, updates)
-                    writer.add_scalar('entropy_temprature/alpha', args.alpha, updates)
+                    # writer.add_scalar('entropy_temprature/alpha', args.alpha, updates)
                     updates += 1
-            
+
             next_state, reward, done, truncated, info = env.step(action) # Step
             episode_steps += 1
             total_numsteps += 1
 
-            episode_reward += probe.dot(FloatTensor(reward)).item()
+            episode_reward += pref.dot(FloatTensor(reward)).item()
 
             mask = 1 if episode_steps == 20 else float(not done)
 
-            memory.push(state, probe, action, reward, next_state, probe, mask, agent) # Append transition to memory
-            
+            memory.push(state, pref, action, reward, next_state, pref, mask, agent) # Append transition to memory
+
             state = next_state
 
         if total_numsteps > args.num_steps or i_episode >= args.num_steps:
@@ -136,7 +142,7 @@ def discrete_train(agent, env, memory, writer, args):
         writer.add_scalar('reward/train', episode_reward, i_episode)
         # print("Episode: {}, total numsteps: {}, episode steps: {}, reward: {}".format(i_episode, total_numsteps, episode_steps, round(episode_reward, 2)))
 
-        if i_episode % 100 == 0 and args.eval is True:
+        if (i_episode % 100 == 0) and (i_episode != 0):
             avg_reward = 0.
 
             eval_reward = []
@@ -144,37 +150,36 @@ def discrete_train(agent, env, memory, writer, args):
 
             for eval_pref in pref_list:
                 state, _ = env.reset()
+                eval_pref = eval_pref.clone().detach().cpu()
+                temp_pref = eval_pref.numpy()
                 # value_f0 = agent.f_critic(torch.FloatTensor(state.reshape(1,-1)), eval_pref.reshape(1,-1))
                 # value_g0 = agent.critic_target(torch.FloatTensor(state.reshape(1,-1)), eval_pref.reshape(1,-1), torch.FloatTensor(np.array([[0.0]])))[0]
                 # value_g1 = agent.critic_target(torch.FloatTensor(state.reshape(1,-1)), eval_pref.reshape(1,-1), torch.FloatTensor(np.array([[1.0]])))[0]
                 # # value_g2 = agent.critic_target(torch.FloatTensor(state.reshape(1,-1)), eval_pref.reshape(1,-1), torch.FloatTensor(np.array([[2.0]])))[0]
                 # value_g3 = agent.critic_target(torch.FloatTensor(state.reshape(1,-1)), eval_pref.reshape(1,-1), torch.FloatTensor(np.array([[3.0]])))[0]
-                # episode_reward = 0
                 done = False
+
                 while not done:
-                    action = agent.select_action(state, eval_pref, evaluate=True)
-                    next_state, reward, done, truncated, info = env.step(action)
-                    eval_pref = eval_pref.clone().detach().cpu()
-                    temp = eval_pref.numpy()
-                    eval_reward.append(np.dot(temp, reward))
+                    action = agent.select_action(state, eval_pref)
+                    next_state, reward, done, _, _ = env.step(action)
                     
-                    reward_list.append(reward)
+                    if done:
+                        reward_list.append(reward)
+                        eval_reward.append(np.dot(temp_pref, reward))
+                    else:
+                        pass
 
                     state = next_state
 
-                avg_reward += sum(eval_reward)/len(eval_reward)
+                # Use the mean reward for the hypervolume calculation
 
-            reward_list = np.array(reward_list)
-            avg_reward = avg_reward/len(pref_list)
-            # Add scale to the result list for evaluation of hypervolume
-            # if args.env_name == "deep-sea-treasure-v0":
-            #     reward_list += 1
-            # elif args.env_name == "mo-lunar-lander-v2":
-            #     reward_list += 100
-            # else:
-            #     pass
+            avg_reward = sum(eval_reward)/len(eval_reward)
 
+            print("Calculating Hypervolume")
+            tock = time.perf_counter()
             hyper = hypervolume(np.zeros(args.num_preferences), reward_list)
+            tick = time.perf_counter()
+            print(f"Calculated Hypervolume in {round(tick-tock,2)}s")
 
             writer.add_scalar('Test Average Reward', avg_reward, i_episode)
             writer.add_scalar('Hypervolume', hyper, i_episode)
@@ -185,7 +190,7 @@ def discrete_train(agent, env, memory, writer, args):
 
             # , Value S0: {}, Value G0: {}, Value G1: {}
             print(
-                "Episode Count: {}; \nHyper Volume: {}; \nAvg. Reward: {}."
+                "Episode Count: {}; \nHypervolume {}; \nAvg. Reward: {}."
                 .format(i_episode, 
                         round(hyper,2),
                         round(avg_reward, 2), 
@@ -222,7 +227,7 @@ def train_hopper(agent, env, memory, writer, args):
         probe = generate_next_preference(np.abs(probe)/np.linalg.norm(probe, ord=1), alpha=args.alpha)
 
         while not done and episode_steps < 500 and i_episode < args.num_episodes:
-            action = agent.select_action(state, probe, (i_episode+1)%2==0)  # Sample action from policy
+            action = agent.select_action(state, probe)  # Sample action from policy
             
             # epsilon
             if (total_numsteps+1)%2==0:

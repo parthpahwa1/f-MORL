@@ -18,10 +18,8 @@ class DiscreteMemory:
             self.buffer.append(None)
             self.priority_mem.append(None)
 
-        self.position = int(self.position)
-
         self.buffer[self.position] = (state, preference, action, reward, next_state, next_preference, done)
-
+        
         Q_val_0, Q_val_1 = agent.critic_target(torch.FloatTensor(state.reshape(1,-1)), preference.reshape(1,-1))
         Q_val = torch.min(Q_val_0, Q_val_1)[0]
         Q_val = Q_val[action]
@@ -46,7 +44,7 @@ class DiscreteMemory:
             replace=False,
             p=pri 
         )
-        # batch = random.sample(self.buffer, batch_size)
+
         batch = [self.buffer[i] for i in index_list]
         state, preference, action, reward, next_state, next_preference, done = map(np.stack, zip(*batch))
         return state, preference, action, reward, next_state, next_preference, done
