@@ -25,8 +25,8 @@ parser.add_argument('--lr', type=float, default=3e-4, metavar='G',
                     help='learning rate (default: 0.0003)')
 parser.add_argument('--seed', type=int, default=123, metavar='N',
                     help='random seed (default: 123)')
-parser.add_argument('--batch_size', type=int, default=256, metavar='N',
-                    help='batch size (default: 256)')
+parser.add_argument('--batch_size', type=int, default=128, metavar='N',
+                    help='batch size (default: 128)')
 parser.add_argument('--num_steps', type=int, default=int(1.5e6), metavar='N',
                     help='maximum number of steps (default: 1.5e6)')
 parser.add_argument('--num_episodes', type=int, default=int(1e5), metavar='N',
@@ -86,7 +86,7 @@ if __name__ == "__main__":
     if args.env_name == "fruit-tree-v0":
         args.action_dim = 2
         args.num_preferences = 6
-        args.num_weights = 1
+        args.num_weights = 4
         args.action_space = env.action_space
         args.num_inputs = env.observation_space.shape[0]
 
@@ -101,7 +101,7 @@ if __name__ == "__main__":
     elif args.env_name == "mo-lunar-lander-v2":
         args.action_dim = 4
         args.num_preferences = 4
-        args.num_weights = 1
+        args.num_weights = 4
         args.action_space = env.action_space
         args.num_inputs = env.observation_space.shape[0]
 
@@ -116,7 +116,7 @@ if __name__ == "__main__":
     elif args.env_name == "deep-sea-treasure-v0":
         args.action_dim = 4
         args.num_preferences = 2
-        args.num_weights = 1
+        args.num_weights = 4
         args.action_space = env.action_space
         args.num_inputs = env.observation_space.shape[0]
 
