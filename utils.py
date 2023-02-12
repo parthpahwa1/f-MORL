@@ -3,6 +3,7 @@ import torch
 import itertools
 import numpy as np
 import time 
+from tqdm import tqdm
 from pymoo.indicators.hv import HV
 
 from typing import List, Optional, Tuple, Union
@@ -92,8 +93,7 @@ def discrete_train(agent, env, memory, writer, args):
 
     total_numsteps = 0
     updates = 0
-    for i_episode in range(args.num_episodes):
-
+    for i_episode in tqdm(range(args.num_episodes)):
         episode_reward = 0
         episode_steps = 0
 
@@ -139,9 +139,13 @@ def discrete_train(agent, env, memory, writer, args):
             break
 
         writer.add_scalar('reward/train', episode_reward, i_episode)
-        # print("Episode: {}, total numsteps: {}, episode steps: {}, reward: {}".format(i_episode, total_numsteps, episode_steps, round(episode_reward, 2)))
 
         if (i_episode % 100 == 0) and (i_episode != 0):
+
+            # Mark start of evaluation.
+            print("Starting Evaluation")
+            tock = time.perf_counter()
+
             avg_reward = 0.
 
             eval_reward = []
@@ -166,6 +170,16 @@ def discrete_train(agent, env, memory, writer, args):
 
                     temp_reward = temp_reward + reward * np.power(args.gamma, count)  
 
+                    if args.env_name == "deep-sea-treasure-v0":
+                        if count > 1000:
+                            # print(f"Breaking {temp_pref} evaluation. Count too high.")
+                            done = True
+
+                    if args.env_name == "mo-lunar-lander-v2":
+                        if count > 1000:
+                            # print(f"Breaking {temp_pref} evaluation. Count too high.")
+                            done = True
+                            
                     if done:
                         reward_list.append(temp_reward)
                         eval_reward.append(np.dot(temp_pref, reward))
@@ -176,20 +190,19 @@ def discrete_train(agent, env, memory, writer, args):
 
                     count += 1
 
-                # Use the mean reward for the hypervolume calculation
-
             reward_list = np.array(list(set([tuple(i) for i in reward_list])))
             avg_reward = sum(eval_reward)/len(eval_reward)
 
-            print("Calculating Hypervolume")
-            tock = time.perf_counter()
+            # calculate hyper volume using discounted rewards at the end of episodes for each preference
             hyper = hypervolume(args.ref_point, reward_list)
-            tick = time.perf_counter()
-            print(f"Calculated Hypervolume in {round(tick-tock,2)}s")
 
             writer.add_scalar('Test Average Reward', avg_reward, i_episode)
             writer.add_scalar('Hypervolume', hyper, i_episode)
-
+            
+            # Mark end of evaluation
+            tick = time.perf_counter()
+            print(f"Evaluation completed in {round(tick-tock,2)}")
+            
             print(
                     "----------------------------------------"
                     )
@@ -206,7 +219,7 @@ def discrete_train(agent, env, memory, writer, args):
                         )
                     )
             print("----------------------------------------")
-    
+
         if i_episode == args.num_episodes:
             print("Training Complete")
             return None
