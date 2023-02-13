@@ -179,7 +179,12 @@ def discrete_train(agent, env, memory, writer, args):
                         if count > 1000:
                             # print(f"Breaking {temp_pref} evaluation. Count too high.")
                             done = True
-                            
+                    
+                    if args.env_name == "resource-gathering-v0":
+                        if count > 1000:
+                            # print(f"Breaking {temp_pref} evaluation. Count too high.")
+                            done = True
+
                     if done:
                         reward_list.append(temp_reward)
                         eval_reward.append(np.dot(temp_pref, reward))
