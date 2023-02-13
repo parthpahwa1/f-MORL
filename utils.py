@@ -87,7 +87,7 @@ def generate_next_preference_gaussian(preference, alpha=0.2):
 
 def discrete_train(agent, env, memory, writer, args):
     rng = np.random.RandomState(args.seed)
-    pref_list = rng.rand(5000, args.num_preferences)
+    pref_list = rng.rand(1000, args.num_preferences)
     pref_list = pref_list/np.sum(pref_list, axis=1)[:, None]
     pref_list = torch.FloatTensor(pref_list)
 
