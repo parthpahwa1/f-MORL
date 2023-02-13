@@ -2,14 +2,12 @@ import math
 import torch
 import itertools
 import numpy as np
+import pandas as pd
 import time 
 from tqdm import tqdm
 from pymoo.indicators.hv import HV
 
 from typing import List, Optional, Tuple, Union
-
-from pymoo.config import Config
-Config.warnings['not_compiled'] = False
 
 
 if  torch.cuda.is_available():
@@ -84,12 +82,39 @@ def generate_next_preference_gaussian(preference, alpha=0.2):
     
     return FloatTensor(new_next_preference)
 
+def find_in(A, B, eps=0.2):
+    # find element of A in B with a tolerance of relative err of eps.
+    cnt1, cnt2 = 0.0, 0.0
+    for a in A:
+        for b in B:
+            if eps > 0.001:
+              if np.linalg.norm(a - b, ord=1) < eps*np.linalg.norm(b):
+                  cnt1 += 1.0
+                  break
+            else:
+              if np.linalg.norm(a - b, ord=1) < 0.5:
+                  cnt1 += 1.0
+                  break
+    for b in B:
+        for a in A:
+            if eps > 0.001:
+              if np.linalg.norm(a - b, ord=1) < eps*np.linalg.norm(b):
+                  cnt2 += 1.0
+                  break
+            else:
+              if np.linalg.norm(a - b, ord=1) < 0.5:
+                  cnt2 += 1.0
+                  break
+    return cnt1, cnt2
 
 def discrete_train(agent, env, memory, writer, args):
     rng = np.random.RandomState(args.seed)
-    pref_list = rng.rand(1000, args.num_preferences)
+    pref_list = rng.rand(2000, args.num_preferences)
     pref_list = pref_list/np.sum(pref_list, axis=1)[:, None]
     pref_list = torch.FloatTensor(pref_list)
+
+    if args.env_name == "minecart-v0":
+        pareto_df = pd.read_csv("minecart_pareto.csv", index=False)
 
     total_numsteps = 0
     updates = 0
@@ -129,7 +154,7 @@ def discrete_train(agent, env, memory, writer, args):
 
             episode_reward += pref.dot(FloatTensor(reward)).item()
 
-            mask = 1 if episode_steps == 20 else float(not done)
+            mask = 1 if not done else 0
 
             memory.push(state, pref, action, reward, next_state, pref, mask, agent) # Append transition to memory
 
@@ -158,7 +183,7 @@ def discrete_train(agent, env, memory, writer, args):
                 # value_f0 = agent.f_critic(torch.FloatTensor(state.reshape(1,-1)), eval_pref.reshape(1,-1))
                 # value_g0 = agent.critic_target(torch.FloatTensor(state.reshape(1,-1)), eval_pref.reshape(1,-1), torch.FloatTensor(np.array([[0.0]])))[0]
                 # value_g1 = agent.critic_target(torch.FloatTensor(state.reshape(1,-1)), eval_pref.reshape(1,-1), torch.FloatTensor(np.array([[1.0]])))[0]
-                # # value_g2 = agent.critic_target(torch.FloatTensor(state.reshape(1,-1)), eval_pref.reshape(1,-1), torch.FloatTensor(np.array([[2.0]])))[0]
+                # value_g2 = agent.critic_target(torch.FloatTensor(state.reshape(1,-1)), eval_pref.reshape(1,-1), torch.FloatTensor(np.array([[2.0]])))[0]
                 # value_g3 = agent.critic_target(torch.FloatTensor(state.reshape(1,-1)), eval_pref.reshape(1,-1), torch.FloatTensor(np.array([[3.0]])))[0]
                 done = False
 
@@ -171,7 +196,7 @@ def discrete_train(agent, env, memory, writer, args):
                     temp_reward = temp_reward + reward * np.power(args.gamma, count)  
 
                     if args.env_name == "deep-sea-treasure-v0":
-                        if count > 1000:
+                        if count > 25:
                             # print(f"Breaking {temp_pref} evaluation. Count too high.")
                             done = True
 
@@ -179,8 +204,13 @@ def discrete_train(agent, env, memory, writer, args):
                         if count > 1000:
                             # print(f"Breaking {temp_pref} evaluation. Count too high.")
                             done = True
-                    
+
                     if args.env_name == "resource-gathering-v0":
+                        if count > 100:
+                            # print(f"Breaking {temp_pref} evaluation. Count too high.")
+                            done = True
+
+                    if args.env_name == "minecart-v0":
                         if count > 1000:
                             # print(f"Breaking {temp_pref} evaluation. Count too high.")
                             done = True
@@ -190,6 +220,7 @@ def discrete_train(agent, env, memory, writer, args):
                         eval_reward.append(np.dot(temp_pref, reward))
                     else:
                         pass
+                    
 
                     state = next_state
 
@@ -203,6 +234,16 @@ def discrete_train(agent, env, memory, writer, args):
 
             writer.add_scalar('Test Average Reward', avg_reward, i_episode)
             writer.add_scalar('Hypervolume', hyper, i_episode)
+
+            if args.env_name == "minecart-v0":
+                cnt1, cnt2 = find_in(reward_list, pareto_df, 0.0)
+                act_precision = cnt1 / len(reward_list)
+                act_recall = cnt2 / len(pareto_df)
+                act_f1 = 2 * act_precision * act_recall / (act_precision + act_recall)
+
+                writer.add_scalar('pareto_precision', act_precision)
+                writer.add_scalar('pareto_recall', act_recall)
+                writer.add_scalar('pareto_f1', act_f1)
             
             # Mark end of evaluation
             tick = time.perf_counter()
@@ -214,7 +255,7 @@ def discrete_train(agent, env, memory, writer, args):
 
             # , Value S0: {}, Value G0: {}, Value G1: {}
             print(
-                "Episode Count: {}; \nHypervolume {}; \nAvg. Reward: {}."
+                "\nEpisode Count: {}; \nHypervolume {}; \nAvg. Reward: {}."
                 .format(i_episode, 
                         hyper,
                         round(avg_reward, 2), 
@@ -342,4 +383,3 @@ def train_hopper(agent, env, memory, writer, args):
 
         env.close()
 
-      

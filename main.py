@@ -1,5 +1,3 @@
-# export CC=/opt/homebrew/bin/gcc-11 
-
 import argparse
 import datetime
 import numpy as np
@@ -50,6 +48,7 @@ parser.add_argument('--divergence', type=str, default='alpha',
                     help="Type of divergence constraint")
 parser.add_argument('--alpha', type=float, default=1, metavar='G',
                     help='alpha divergence constant (default: 1)')
+
 args = parser.parse_args()
 
 # Assertions
@@ -141,7 +140,7 @@ if __name__ == "__main__":
         args.num_weights = 4
         args.action_space = env.action_space
         args.num_inputs = env.observation_space.shape[0]
-        args.ref_point = np.array([-19,-19,-19])
+        args.ref_point = np.array([-1e-3,-1e-3,-100])
 
         agent = DiscreteSAC(args.num_inputs, args)
 
@@ -200,3 +199,4 @@ if __name__ == "__main__":
 
     else:
         raise NameError(f"{args.env_name} is not an enviroment.")
+

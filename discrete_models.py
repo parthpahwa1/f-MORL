@@ -208,7 +208,7 @@ class DiscreteSAC(object):
             return -(t+1)*torch.log((t+1)/(2))+t*torch.log(t)
         else:
             pass
-         
+
     def update_parameters(self, memory, batch_size, updates):
         # Sample a batch from memory
         state_batch, preference_batch, action_batch, reward_batch, next_state_batch, next_preference_batch, mask_batch = memory.sample(batch_size=batch_size)
@@ -268,7 +268,8 @@ class DiscreteSAC(object):
         self.actor_optim.step()
 
         F_val = self.f_critic(state_batch, preference_batch)
-        target_F_value = next_G_value - self.alpha*divergance_loss.clamp(-1, 1)
+        # target_F_value = next_G_value - self.alpha*divergance_loss.clamp(-1, 1)
+        target_F_value = next_G_value 
         F_loss = F.mse_loss(F_val, target_F_value.detach())   
 
         # F critic backwards step
