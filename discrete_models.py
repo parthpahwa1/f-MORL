@@ -22,11 +22,11 @@ class Discrete_F_Network(nn.Module):
     def __init__(self, num_inputs, num_preferences, action_dim, hidden_dim):
         super(Discrete_F_Network, self).__init__()
 
-        self.linear1 = nn.Linear(num_inputs + num_preferences, (num_inputs + num_preferences)*16)
-        self.linear2a = nn.Linear((num_inputs + num_preferences)*16, (num_inputs + num_preferences)*32)
-        self.linear2b = nn.Linear((num_inputs + num_preferences)*32, (num_inputs + num_preferences)*64)
-        self.linear2c = nn.Linear((num_inputs + num_preferences)*64, (num_inputs + num_preferences)*32)
-        self.mean_linear1 = nn.Linear((num_inputs + num_preferences)*32, 1)
+        self.linear1 = nn.Linear(num_inputs + num_preferences, hidden_dim)
+        self.linear2a = nn.Linear(hidden_dim, hidden_dim)
+        self.linear2b = nn.Linear(hidden_dim, hidden_dim)
+        self.linear2c = nn.Linear(hidden_dim, hidden_dim)
+        self.mean_linear1 = nn.Linear(hidden_dim, 1)
 
         self.apply(weights_init_)
 
@@ -47,18 +47,18 @@ class Discrete_G_Network(nn.Module):
         super(Discrete_G_Network, self).__init__()
         
         # Q1 architecture
-        self.linear1 = nn.Linear(num_inputs + num_preferences, (num_inputs + num_preferences)*16)
-        self.linear2a = nn.Linear((num_inputs + num_preferences)*16, (num_inputs + num_preferences)*32)
-        self.linear2b = nn.Linear((num_inputs + num_preferences)*32, (num_inputs + num_preferences)*64)
-        self.linear2c = nn.Linear((num_inputs + num_preferences)*64, (num_inputs + num_preferences)*32)
-        self.mean_linear1 = nn.Linear((num_inputs + num_preferences)*32, action_dim)
+        self.linear1 = nn.Linear(num_inputs + num_preferences, hidden_dim)
+        self.linear2a = nn.Linear(hidden_dim, hidden_dim)
+        self.linear2b = nn.Linear(hidden_dim, hidden_dim)
+        self.linear2c = nn.Linear(hidden_dim, hidden_dim)
+        self.mean_linear1 = nn.Linear(hidden_dim, action_dim)
 
         # Q2 architecture
-        self.linear3= nn.Linear(num_inputs + num_preferences, (num_inputs + num_preferences)*16)
-        self.linear4a = nn.Linear((num_inputs + num_preferences)*16, (num_inputs + num_preferences)*32)
-        self.linear4b = nn.Linear((num_inputs + num_preferences)*32, (num_inputs + num_preferences)*64)
-        self.linear4c = nn.Linear((num_inputs + num_preferences)*64, (num_inputs + num_preferences)*32)
-        self.mean_linear2 = nn.Linear((num_inputs + num_preferences)*32, action_dim)
+        self.linear3= nn.Linear(num_inputs + num_preferences, hidden_dim)
+        self.linear4a = nn.Linear(hidden_dim, hidden_dim)
+        self.linear4b = nn.Linear(hidden_dim, hidden_dim)
+        self.linear4c = nn.Linear(hidden_dim, hidden_dim)
+        self.mean_linear2 = nn.Linear(hidden_dim, action_dim)
 
         self.apply(weights_init_)
         return None
@@ -85,11 +85,11 @@ class DiscreteGaussianPolicy(nn.Module):
     def __init__(self, num_inputs, num_preferences, action_dim, hidden_dim):
         super(DiscreteGaussianPolicy, self).__init__()
         
-        self.linear1 = nn.Linear(num_inputs + num_preferences, (num_inputs + num_preferences)*16)
-        self.linear2a = nn.Linear((num_inputs + num_preferences)*16, (num_inputs + num_preferences)*32)
-        self.linear2b = nn.Linear((num_inputs + num_preferences)*32, (num_inputs + num_preferences)*64)
-        self.linear2c = nn.Linear((num_inputs + num_preferences)*64, (num_inputs + num_preferences)*32)
-        self.mean_linear = nn.Linear((num_inputs + num_preferences)*32, action_dim)
+        self.linear1 = nn.Linear(num_inputs + num_preferences, hidden_dim)
+        self.linear2a = nn.Linear(hidden_dim, hidden_dim)
+        self.linear2b = nn.Linear(hidden_dim, hidden_dim)
+        self.linear2c = nn.Linear(hidden_dim, hidden_dim)
+        self.mean_linear = nn.Linear(hidden_dim, action_dim)
 
         self.apply(weights_init_)
 

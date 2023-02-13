@@ -54,24 +54,27 @@ args = parser.parse_args()
 
 # Assertions
 assert args.divergence in {"alpha", "variational_distance", "Jensen-Shannon"}
-assert args.env_name in {"fruit-tree-v0", "mo-lunar-lander-v2", "deep-sea-treasure-v0", "minecart-v0", "breakable-bottles-v0"}
+assert args.env_name in {"fruit-tree-v0", "mo-lunar-lander-v2", "deep-sea-treasure-v0", "minecart-v0", "four-room-v0"}
 
 if not torch.backends.mps.is_available():
     if not torch.backends.mps.is_built():
         print("MPS not available because the current PyTorch install was not "
               "built with MPS enabled.")
+        device = torch.device("cpu")
     else:
         print("MPS not available because the current MacOS version is not 12.3+ "
               "and/or you do not have an MPS-enabled device on this machine.")
+        device = torch.device("cpu")
 else:
     device = torch.device("mps")
 
 if  torch.cuda.is_available():
-    device = torch.device("cuda")
-    FloatTensor = torch.cuda.FloatTensor 
-    LongTensor = torch.cuda.LongTensor 
-    ByteTensor = torch.cuda.ByteTensor 
-    Tensor = FloatTensor
+    if args.cuda:
+        device = torch.device("cuda")
+        FloatTensor = torch.cuda.FloatTensor 
+        LongTensor = torch.cuda.LongTensor 
+        ByteTensor = torch.cuda.ByteTensor 
+        Tensor = FloatTensor
 else:
     FloatTensor = torch.FloatTensor 
     LongTensor = torch.LongTensor 
@@ -147,17 +150,17 @@ if __name__ == "__main__":
 
         discrete_train(agent, env, memory, writer, args)
 
-    elif args.env_name == "breakable-bottles-v0":
-        args.action_dim = 3
+    elif args.env_name == "four-room-v0":
+        args.action_dim = 4
         args.num_preferences = 3
         args.num_weights = 4
         args.action_space = env.action_space
         args.num_inputs = env.observation_space.shape[0]
-        args.ref_point = np.array([-100,0,-19])
+        args.ref_point = np.array([0,0,0])
 
         agent = DiscreteSAC(args.num_inputs, args)
 
-        writer = SummaryWriter(f'./BreakableBottles_v0/{datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")}_SAC_{args.env_name}_{args.divergence}_{args.alpha}')
+        writer = SummaryWriter(f'./FourRoom_v0/{datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")}_SAC_{args.env_name}_{args.divergence}_{args.alpha}')
 
         memory = DiscreteMemory(args.replay_size,  args.gamma, args.seed)
 
