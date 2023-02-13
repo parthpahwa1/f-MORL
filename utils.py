@@ -216,7 +216,7 @@ def discrete_train(agent, env, memory, writer, args):
             print(
                 "Episode Count: {}; \nHypervolume {}; \nAvg. Reward: {}."
                 .format(i_episode, 
-                        round(hyper,2),
+                        hyper,
                         round(avg_reward, 2), 
                         # float(value_f0.detach().cpu().numpy()), 
                         # float(value_g0.detach().cpu().numpy()),
