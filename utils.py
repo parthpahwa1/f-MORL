@@ -120,7 +120,13 @@ def discrete_train(agent, env, memory, writer, args):
 
     total_numsteps = 0
     updates = 0
-    for i_episode in tqdm(range(args.num_episodes)):
+
+    if agent.i_episode != None:
+        lower_bound = agent.i_episode + 1
+    else:
+        lower_bound = None
+
+    for i_episode in tqdm(range(lower_bound, args.num_episodes)):
         episode_reward = 0
         episode_steps = 0
 
@@ -244,9 +250,9 @@ def discrete_train(agent, env, memory, writer, args):
                 else:
                     act_f1 = 2 * act_precision * act_recall / (act_precision + act_recall)
 
-                writer.add_scalar('pareto_precision', act_precision)
-                writer.add_scalar('pareto_recall', act_recall)
-                writer.add_scalar('pareto_f1', act_f1)
+                writer.add_scalar('pareto_precision', act_precision, i_episode)
+                writer.add_scalar('pareto_recall', act_recall, i_episode)
+                writer.add_scalar('pareto_f1', act_f1, i_episode)
             
             # Mark end of evaluation
             tick = time.perf_counter()
@@ -269,7 +275,7 @@ def discrete_train(agent, env, memory, writer, args):
                     )
             print("----------------------------------------")
 
-            agent.save_checkpoint(args.env_name, ckpt_path=f"{args.divergence}_{args.alpha}_{i_episode}")
+            agent.save_checkpoint(args.env_name, ckpt_path=f"{args.env_name}_{args.divergence}_{args.alpha}_{i_episode}")
 
         if total_numsteps > args.num_steps or i_episode >= args.num_episodes:
             print("Training Complete")

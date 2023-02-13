@@ -147,6 +147,8 @@ class DiscreteSAC(object):
         self.gamma = args.gamma
         self.tau = args.tau
         self.alpha = args.alpha
+
+        self.i_episode = None
         
         device = ""
         if args.cuda:
@@ -317,6 +319,8 @@ class DiscreteSAC(object):
             self.f_optim.load_state_dict(checkpoint['f_critic_optimizer_state_dict'])
 
             self.actor_optim.load_state_dict(checkpoint['policy_optimizer_state_dict'])
+
+            self.i_episode = ckpt_path.split("_")[-1]
 
             if evaluate:
                 self.actor.eval()

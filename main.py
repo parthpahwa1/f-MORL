@@ -141,8 +141,15 @@ if __name__ == "__main__":
         args.action_space = env.action_space
         args.num_inputs = env.observation_space.shape[0]
         args.ref_point = np.array([-1e-3,-1e-3,-100])
-
+       
         agent = DiscreteSAC(args.num_inputs, args)
+        
+        for i in range(0,30):
+            if os.path.exists(f"checkpoints/{args.env_name}_{args.divergence}_{args.alpha}_{i*100}"):
+                agent = DiscreteSAC(args.num_inputs, args)
+                agent.load_checkpoint(f"checkpoints/{args.env_name}_{args.divergence}_{args.alpha}_{i*100}")
+            else:
+                pass
 
         writer = SummaryWriter(f'./MineCart_v0/{datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")}_SAC_{args.env_name}_{args.divergence}_{args.alpha}')
 
