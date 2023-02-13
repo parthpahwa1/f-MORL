@@ -82,6 +82,7 @@ def generate_next_preference_gaussian(preference, alpha=0.2):
     
     return FloatTensor(new_next_preference)
 
+
 def find_in(A, B, eps=0.2):
     # find element of A in B with a tolerance of relative err of eps.
     cnt1, cnt2 = 0.0, 0.0
@@ -107,6 +108,7 @@ def find_in(A, B, eps=0.2):
                   break
     return cnt1, cnt2
 
+
 def discrete_train(agent, env, memory, writer, args):
     rng = np.random.RandomState(args.seed)
     pref_list = rng.rand(2000, args.num_preferences)
@@ -114,7 +116,7 @@ def discrete_train(agent, env, memory, writer, args):
     pref_list = torch.FloatTensor(pref_list)
 
     if args.env_name == "minecart-v0":
-        pareto_df = pd.read_csv("minecart_pareto.csv", index=False)
+        pareto_df = pd.read_csv("minecart_pareto.csv")
 
     total_numsteps = 0
     updates = 0
@@ -236,10 +238,14 @@ def discrete_train(agent, env, memory, writer, args):
             writer.add_scalar('Hypervolume', hyper, i_episode)
 
             if args.env_name == "minecart-v0":
-                cnt1, cnt2 = find_in(reward_list, pareto_df, 0.0)
+                cnt1, cnt2 = find_in(reward_list, pareto_df.values, 0.001)
                 act_precision = cnt1 / len(reward_list)
                 act_recall = cnt2 / len(pareto_df)
-                act_f1 = 2 * act_precision * act_recall / (act_precision + act_recall)
+
+                if act_precision == 0 and act_recall == 0:
+                    act_f1 = 0.0
+                else:
+                    act_f1 = 2 * act_precision * act_recall / (act_precision + act_recall)
 
                 writer.add_scalar('pareto_precision', act_precision)
                 writer.add_scalar('pareto_recall', act_recall)
@@ -273,113 +279,92 @@ def discrete_train(agent, env, memory, writer, args):
         env.close()
 
 
-def train_hopper(agent, env, memory, writer, args):
+def discrete_evaluate(agent, env, args):
+
     rng = np.random.RandomState(args.seed)
-    prob_list = rng.rand(1000, args.num_preferences)
-    prob_list = [torch.FloatTensor(item/sum(item)) for item in prob_list]
+    pref_list = rng.rand(2000, args.num_preferences)
+    pref_list = pref_list/np.sum(pref_list, axis=1)[:, None]
+    pref_list = torch.FloatTensor(pref_list)
 
-    total_numsteps = 0
-    updates = 0
-    for i_episode in range(args.num_episodes):
+    if args.env_name == "minecart-v0":
+        pareto_df = pd.read_csv("minecart_pareto.csv")
 
-        episode_reward = 0
-        episode_steps = 0
+    # Mark start of evaluation.
+    print("Starting Evaluation")
+    tock = time.perf_counter()
 
-        done = False
+    avg_reward = 0.
+
+    eval_reward = []
+    reward_list = []
+
+    for eval_pref in pref_list:
         state, _ = env.reset()
-        
-        probe = np.random.rand(args.num_preferences)
-        probe = generate_next_preference(np.abs(probe)/np.linalg.norm(probe, ord=1), alpha=args.alpha)
+        eval_pref = eval_pref.clone().detach().cpu()
+        temp_pref = eval_pref.numpy()
+        # value_f0 = agent.f_critic(torch.FloatTensor(state.reshape(1,-1)), eval_pref.reshape(1,-1))
+        # value_g0 = agent.critic_target(torch.FloatTensor(state.reshape(1,-1)), eval_pref.reshape(1,-1), torch.FloatTensor(np.array([[0.0]])))[0]
+        # value_g1 = agent.critic_target(torch.FloatTensor(state.reshape(1,-1)), eval_pref.reshape(1,-1), torch.FloatTensor(np.array([[1.0]])))[0]
+        # value_g2 = agent.critic_target(torch.FloatTensor(state.reshape(1,-1)), eval_pref.reshape(1,-1), torch.FloatTensor(np.array([[2.0]])))[0]
+        # value_g3 = agent.critic_target(torch.FloatTensor(state.reshape(1,-1)), eval_pref.reshape(1,-1), torch.FloatTensor(np.array([[3.0]])))[0]
+        done = False
 
-        while not done and episode_steps < 500 and i_episode < args.num_episodes:
-            action = agent.select_action(state, probe)  # Sample action from policy
+        temp_reward = np.zeros(args.num_preferences)
+        count = 0
+        while not done:
+            action = agent.act(state, eval_pref)
+            next_state, reward, done, _, _ = env.step(action)
+
+            temp_reward = temp_reward + reward * np.power(args.gamma, count)  
+
+            if args.env_name == "deep-sea-treasure-v0":
+                if count > 25:
+                    # print(f"Breaking {temp_pref} evaluation. Count too high.")
+                    done = True
+
+            if args.env_name == "mo-lunar-lander-v2":
+                if count > 1000:
+                    # print(f"Breaking {temp_pref} evaluation. Count too high.")
+                    done = True
+
+            if args.env_name == "resource-gathering-v0":
+                if count > 100:
+                    # print(f"Breaking {temp_pref} evaluation. Count too high.")
+                    done = True
+
+            if args.env_name == "minecart-v0":
+                if count > 1000:
+                    # print(f"Breaking {temp_pref} evaluation. Count too high.")
+                    done = True
+
+            if done:
+                reward_list.append(temp_reward)
+                eval_reward.append(np.dot(temp_pref, reward))
+            else:
+                pass
             
-            # epsilon
-            if (total_numsteps+1)%2==0:
-                action = rng.uniform(-1,1,3)  
-
-            if len(memory) > args.batch_size:
-                # Number of updates per step in environment
-                for i in range(args.updates_per_step):
-                    critic_1_loss, critic_2_loss, policy_loss, ent_loss, args.alpha = agent.update_parameters(memory, args.batch_size, updates)
-                    # Update parameters of all the networks
-                    writer.add_scalar('loss/critic_1', critic_1_loss, updates)
-                    writer.add_scalar('loss/critic_2', critic_2_loss, updates)
-                    writer.add_scalar('loss/policy', policy_loss, updates)
-                    # writer.add_scalar('loss/entropy_loss', ent_loss, updates)
-                    writer.add_scalar('entropy_temprature/alpha', args.alpha, updates)
-                    updates += 1
-            
-            next_state, reward, done, truncated, info = env.step(action) # Step
-            episode_steps += 1
-            total_numsteps += 1
-
-            episode_reward += probe.dot(FloatTensor(reward)).item()
-
-            mask = 1 if episode_steps == 20 else float(not done)
-
-            memory.push(state, probe, action, reward, next_state, probe, mask, agent) # Append transition to memory
 
             state = next_state
 
-        if total_numsteps > args.num_steps or i_episode >= args.num_steps:
-            break
+            count += 1
 
-        writer.add_scalar('reward/train', episode_reward, i_episode)
-        # print("Episode: {}, total numsteps: {}, episode steps: {}, reward: {}".format(i_episode, total_numsteps, episode_steps, round(episode_reward, 2)))
+    reward_list = np.array(list(set([tuple(i) for i in reward_list])))
+    avg_reward = sum(eval_reward)/len(eval_reward)
 
-        if i_episode % 10 == 0:
-            avg_reward = 0.
+    # calculate hyper volume using discounted rewards at the end of episodes for each preference
+    hyper = hypervolume(args.ref_point, reward_list)
 
-            eval_reward = []
-            reward_list = []
-
-            for eval_probe in prob_list:
-                state, _ = env.reset()
-                value_f0 = agent.f_critic(torch.FloatTensor(state.reshape(1,-1)), eval_probe.reshape(1,-1))
-                value_g0 = agent.critic_target(torch.FloatTensor(state.reshape(1,-1)), eval_probe.reshape(1,-1), torch.FloatTensor(np.array([[-1.0,-1.0,-1.0]])))[0]
-                value_g1 = agent.critic_target(torch.FloatTensor(state.reshape(1,-1)), eval_probe.reshape(1,-1), torch.FloatTensor(np.array([[1.0, 1.0, 1.0]])))[0]
-                # episode_reward = 0
-
-                done = False
-                while not done:
-                    action = agent.select_action(state, eval_probe, evaluate=True)
-                    next_state, reward, done, truncated, info = env.step(action)
-                    eval_probe = eval_probe.clone().detach().cpu()
-                    eval_reward.append(np.dot(eval_probe, reward))
-                    
-                    reward_list.append(reward)
-
-                    state = next_state
-
-                avg_reward += sum(eval_reward)/len(eval_reward)
-
-            avg_reward = avg_reward/len(prob_list)
-            hyper = hypervolume(np.zeros(args.num_preferences), reward_list)
-
-            writer.add_scalar('Test Average Reward', avg_reward, i_episode)
-            writer.add_scalar('Hypervolume', hyper, i_episode)
-
-            print(
-                    "----------------------------------------"
-                    )
-
-            # , Value S0: {}, Value G0: {}, Value G1: {}
-            print(
-                "Episode Count: {}; \nHyper Volume: {}; \nAvg. Reward: {}."
-                .format(i_episode, 
-                        round(hyper,2),
-                        round(avg_reward, 2), 
-                        # float(value_f0.detach().cpu().numpy()), 
-                        # float(value_g0.detach().cpu().numpy()),
-                        # float(value_g1.detach().cpu().numpy())
-                        )
-                    )
-            print("----------------------------------------")
+    if args.env_name == "minecart-v0":
+        cnt1, cnt2 = find_in(reward_list, pareto_df, 0.0)
+        act_precision = cnt1 / len(reward_list)
+        act_recall = cnt2 / len(pareto_df)
+        act_f1 = 2 * act_precision * act_recall / (act_precision + act_recall)
     
-        if i_episode == args.num_episodes:
-            print("Training Complete")
-            return None
+    # Mark end of evaluation
+    tick = time.perf_counter()
 
-        env.close()
+    print(f"Evaluation complete in {round(tick-tock,2)}s.")
+    env.close()
+
+    return (avg_reward, hyper, act_precision, act_recall, act_f1)
 
