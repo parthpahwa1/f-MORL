@@ -111,7 +111,7 @@ def find_in(A, B, eps=0.2):
 
 def discrete_train(agent, env, memory, writer, args):
     rng = np.random.RandomState(args.seed)
-    pref_list = rng.rand(2000, args.num_preferences)
+    pref_list = rng.rand(1000, args.num_preferences)
     pref_list = pref_list/np.sum(pref_list, axis=1)[:, None]
     pref_list = torch.FloatTensor(pref_list)
 
@@ -167,7 +167,7 @@ def discrete_train(agent, env, memory, writer, args):
 
         writer.add_scalar('reward/train', episode_reward, i_episode)
 
-        if (i_episode % 100 == 0) and (i_episode != 0):
+        if (i_episode % 250 == 0) and (i_episode != 0):
 
             # Mark start of evaluation.
             print("Starting Evaluation")
@@ -271,6 +271,8 @@ def discrete_train(agent, env, memory, writer, args):
                         )
                     )
             print("----------------------------------------")
+
+            agent.save_checkpoint(args.env_name, ckpt_path=f"{args.divergence}_{args.alpha}_{i_episode}")
 
         if i_episode == args.num_episodes:
             print("Training Complete")
