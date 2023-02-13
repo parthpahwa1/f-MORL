@@ -182,20 +182,20 @@ if __name__ == "__main__":
 
         discrete_train(agent, env, memory, writer, args)
 
-    elif args.env_name == "mo-hopper-v4":
-        args.num_preferences = 3
-        args.num_weights = 1
-        args.action_space = env.action_space
-        args.action_space.n = 3
-        args.num_inputs = env.observation_space.shape[0]
-        agent = ContinuousSAC(args.num_inputs, args)
+    # elif args.env_name == "mo-hopper-v4":
+    #     args.num_preferences = 3
+    #     args.num_weights = 1
+    #     args.action_space = env.action_space
+    #     args.action_space.n = 3
+    #     args.num_inputs = env.observation_space.shape[0]
+    #     agent = ContinuousSAC(args.num_inputs, args)
 
-        writer = SummaryWriter('./Hopper_runs/{}_SAC_{}_{}_{}'.format(datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S"), args.env_name,
-                                                                    args.policy, "autotune" if args.automatic_entropy_tuning else ""))
+    #     writer = SummaryWriter('./Hopper_runs/{}_SAC_{}_{}_{}'.format(datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S"), args.env_name,
+    #                                                                 args.policy, "autotune" if args.automatic_entropy_tuning else ""))
         
-        memory = ContinuousReplayMemory(args.replay_size,  args.gamma, args.seed)
+    #     memory = ContinuousReplayMemory(args.replay_size,  args.gamma, args.seed)
 
-        train_hopper(agent, env, memory, writer, args)
+    #     train_hopper(agent, env, memory, writer, args)
 
     else:
         raise NameError(f"{args.env_name} is not an enviroment.")

@@ -162,9 +162,6 @@ def discrete_train(agent, env, memory, writer, args):
 
             state = next_state
 
-        if total_numsteps > args.num_steps or i_episode >= args.num_episodes:
-            break
-
         writer.add_scalar('reward/train', episode_reward, i_episode)
 
         if (i_episode % 250 == 0) and (i_episode != 0):
@@ -274,7 +271,7 @@ def discrete_train(agent, env, memory, writer, args):
 
             agent.save_checkpoint(args.env_name, ckpt_path=f"{args.divergence}_{args.alpha}_{i_episode}")
 
-        if i_episode == args.num_episodes:
+        if total_numsteps > args.num_steps or i_episode >= args.num_episodes:
             print("Training Complete")
             return None
 
