@@ -173,7 +173,7 @@ if __name__ == "__main__":
         args.num_weights = 4
         args.action_space = env.action_space
         args.num_inputs = env.observation_space.shape[0]
-        args.ref_point = np.array([0,0,-9])
+        args.ref_point = np.array([-1e-3,-1e-3,-0.33])
 
         agent = DiscreteSAC(args.num_inputs, args)
 
