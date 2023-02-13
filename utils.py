@@ -111,7 +111,7 @@ def find_in(A, B, eps=0.2):
 
 def discrete_train(agent, env, memory, writer, args):
     rng = np.random.RandomState(args.seed)
-    pref_list = rng.rand(1000, args.num_preferences)
+    pref_list = rng.rand(2000, args.num_preferences)
     pref_list = pref_list/np.sum(pref_list, axis=1)[:, None]
     pref_list = torch.FloatTensor(pref_list)
 
@@ -121,10 +121,10 @@ def discrete_train(agent, env, memory, writer, args):
     total_numsteps = 0
     updates = 0
 
-    if agent.i_episode != None:
-        lower_bound = int(agent.i_episode) + 1
+    if agent.i_episode != 0:
+        lower_bound = agent.i_episode + 1
     else:
-        lower_bound = None
+        lower_bound = 0
 
     for i_episode in tqdm(range(lower_bound, args.num_episodes)):
         episode_reward = 0

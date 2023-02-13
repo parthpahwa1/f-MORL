@@ -148,7 +148,7 @@ class DiscreteSAC(object):
         self.tau = args.tau
         self.alpha = args.alpha
 
-        self.i_episode = None
+        self.i_episode = 0
         
         device = ""
         if args.cuda:

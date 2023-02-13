@@ -158,12 +158,15 @@ if __name__ == "__main__":
        
         agent = DiscreteSAC(args.num_inputs, args)
         
+        i_max = 0
         for i in range(0,60):
             if os.path.exists(f"checkpoints/{args.env_name}_{args.divergence}_{args.alpha}_{i*50}"):
-                agent = DiscreteSAC(args.num_inputs, args)
-                agent.load_checkpoint(f"checkpoints/{args.env_name}_{args.divergence}_{args.alpha}_{i*50}")
+                i_max = i*50
             else:
                 pass
+
+        if i_max != 0:
+            agent.load_checkpoint(f"checkpoints/{args.env_name}_{args.divergence}_{args.alpha}_{i_max}")
 
         writer = SummaryWriter(f'./MineCart_v0/{datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")}_SAC_{args.env_name}_{args.divergence}_{args.alpha}')
 
