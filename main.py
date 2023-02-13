@@ -15,17 +15,17 @@ import torch.nn.functional as F
 from torch.utils.tensorboard import SummaryWriter
 
 parser = argparse.ArgumentParser(description='PyTorch Soft Actor-Critic Args')
-parser.add_argument('--env_name', default="fruit-tree-v0",
+parser.add_argument('--env_name', default="deep-sea-treasure-v0",
                     help='MOGYM enviroment (default: fruit-tree-v0)')
 parser.add_argument('--gamma', type=float, default=0.99, metavar='G',
                     help='discount factor for reward (default: 0.99)')
 parser.add_argument('--tau', type=float, default=0.005, metavar='G',
                     help='target smoothing coefficient(τ) (default: 0.005)')
-parser.add_argument('--lr', type=float, default=1e-3, metavar='G',
+parser.add_argument('--lr', type=float, default=5e-3, metavar='G',
                     help='learning rate (default: 1e-3)')
 parser.add_argument('--seed', type=int, default=123, metavar='N',
                     help='random seed (default: 123)')
-parser.add_argument('--batch_size', type=int, default=128, metavar='N',
+parser.add_argument('--batch_size', type=int, default=256, metavar='N',
                     help='batch size (default: 128)')
 parser.add_argument('--num_steps', type=int, default=int(1.5e6), metavar='N',
                     help='maximum number of steps (default: 1.5e6)')

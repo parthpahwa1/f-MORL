@@ -87,8 +87,9 @@ def generate_next_preference_gaussian(preference, alpha=0.2):
 
 def discrete_train(agent, env, memory, writer, args):
     rng = np.random.RandomState(args.seed)
-    pref_list = rng.rand(1000, args.num_preferences)
+    pref_list = rng.rand(200, args.num_preferences)
     pref_list = pref_list/np.sum(pref_list, axis=1)[:, None]
+    pref_list = np.vstack((pref_list, rng.dirichlet(np.ones(args.num_preferences), 1800)))
     pref_list = torch.FloatTensor(pref_list)
 
     total_numsteps = 0
@@ -99,15 +100,32 @@ def discrete_train(agent, env, memory, writer, args):
 
         done = False
         state, _ = env.reset()
+        if i_episode % 2 == 0:
+            pref = rng.dirichlet(np.ones(args.num_preferences))
+            pref = torch.FloatTensor(pref)
+        else:
+            pref = rng.rand(args.num_preferences)
+            pref = torch.FloatTensor(pref/np.sum(pref))
 
-        pref = rng.rand(args.num_preferences)
-        pref = torch.FloatTensor(pref/np.sum(pref))
+        max_episode_step = 300
 
-        while not done and episode_steps < 500:
+        if i_episode == 500:
+            max_episode_step = 300
+        if i_episode == 1000:
+            max_episode_step = 250
+        if i_episode == 1500:
+            max_episode_step = 200
+        if i_episode == 2000:
+            max_episode_step = 50
+
+        while not done and episode_steps < max_episode_step:
             action = agent.select_action(state, pref)  # Sample action from policy
 
             # epsilon
-            if (total_numsteps+1)%2==0:
+            if (i_episode < 1500) and (total_numsteps+1)%2==0:
+                action = rng.randint(0, args.action_space.n)
+            
+            elif (i_episode > 2000) and (total_numsteps+1)%5==0:
                 action = rng.randint(0, args.action_space.n)
 
             # If the number of steps is devisible by the batch size perform an update
@@ -129,7 +147,7 @@ def discrete_train(agent, env, memory, writer, args):
 
             episode_reward += pref.dot(FloatTensor(reward)).item()
 
-            mask = 1 if episode_steps == 20 else float(not done)
+            mask = 1 if not done else 0
 
             memory.push(state, pref, action, reward, next_state, pref, mask, agent) # Append transition to memory
 
@@ -171,7 +189,7 @@ def discrete_train(agent, env, memory, writer, args):
                     temp_reward = temp_reward + reward * np.power(args.gamma, count)  
 
                     if args.env_name == "deep-sea-treasure-v0":
-                        if count > 1000:
+                        if count > 25:
                             # print(f"Breaking {temp_pref} evaluation. Count too high.")
                             done = True
 
