@@ -320,7 +320,7 @@ class DiscreteSAC(object):
 
             self.actor_optim.load_state_dict(checkpoint['policy_optimizer_state_dict'])
 
-            self.i_episode = ckpt_path.split("_")[-1]
+            self.i_episode = int(ckpt_path.split("_")[-1])
 
             if evaluate:
                 self.actor.eval()

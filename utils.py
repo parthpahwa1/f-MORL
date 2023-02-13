@@ -122,7 +122,7 @@ def discrete_train(agent, env, memory, writer, args):
     updates = 0
 
     if agent.i_episode != None:
-        lower_bound = agent.i_episode + 1
+        lower_bound = int(agent.i_episode) + 1
     else:
         lower_bound = None
 

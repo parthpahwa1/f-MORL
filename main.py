@@ -96,6 +96,13 @@ if __name__ == "__main__":
 
         agent = DiscreteSAC(args.num_inputs, args)
 
+        for i in range(0,60):
+            if os.path.exists(f"checkpoints/{args.env_name}_{args.divergence}_{args.alpha}_{i*50}"):
+                agent = DiscreteSAC(args.num_inputs, args)
+                agent.load_checkpoint(f"checkpoints/{args.env_name}_{args.divergence}_{args.alpha}_{i*50}")
+            else:
+                pass
+
         writer = SummaryWriter(f'./FruitTree_v0/{datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")}_SAC_{args.env_name}_{args.divergence}_{args.alpha}')
         
         memory = DiscreteMemory(args.replay_size,  args.gamma, args.seed)
@@ -111,6 +118,13 @@ if __name__ == "__main__":
         args.ref_point = np.array([-100, -100, -100, -100])
 
         agent = DiscreteSAC(args.num_inputs, args)
+
+        for i in range(0,60):
+            if os.path.exists(f"checkpoints/{args.env_name}_{args.divergence}_{args.alpha}_{i*50}"):
+                agent = DiscreteSAC(args.num_inputs, args)
+                agent.load_checkpoint(f"checkpoints/{args.env_name}_{args.divergence}_{args.alpha}_{i*50}")
+            else:
+                pass
 
         writer = SummaryWriter(f'./LunarLander_v2/{datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")}_SAC_{args.env_name}_{args.divergence}_{args.alpha}')
 
@@ -144,10 +158,10 @@ if __name__ == "__main__":
        
         agent = DiscreteSAC(args.num_inputs, args)
         
-        for i in range(0,30):
-            if os.path.exists(f"checkpoints/{args.env_name}_{args.divergence}_{args.alpha}_{i*100}"):
+        for i in range(0,60):
+            if os.path.exists(f"checkpoints/{args.env_name}_{args.divergence}_{args.alpha}_{i*50}"):
                 agent = DiscreteSAC(args.num_inputs, args)
-                agent.load_checkpoint(f"checkpoints/{args.env_name}_{args.divergence}_{args.alpha}_{i*100}")
+                agent.load_checkpoint(f"checkpoints/{args.env_name}_{args.divergence}_{args.alpha}_{i*50}")
             else:
                 pass
 
@@ -167,6 +181,13 @@ if __name__ == "__main__":
 
         agent = DiscreteSAC(args.num_inputs, args)
 
+        for i in range(0,60):
+            if os.path.exists(f"checkpoints/{args.env_name}_{args.divergence}_{args.alpha}_{i*50}"):
+                agent = DiscreteSAC(args.num_inputs, args)
+                agent.load_checkpoint(f"checkpoints/{args.env_name}_{args.divergence}_{args.alpha}_{i*50}")
+            else:
+                pass
+
         writer = SummaryWriter(f'./FourRoom_v0/{datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")}_SAC_{args.env_name}_{args.divergence}_{args.alpha}')
 
         memory = DiscreteMemory(args.replay_size,  args.gamma, args.seed)
@@ -182,6 +203,13 @@ if __name__ == "__main__":
         args.ref_point = np.array([-1e-3,-1e-3,-0.33])
 
         agent = DiscreteSAC(args.num_inputs, args)
+
+        for i in range(0,60):
+            if os.path.exists(f"checkpoints/{args.env_name}_{args.divergence}_{args.alpha}_{i*50}"):
+                agent = DiscreteSAC(args.num_inputs, args)
+                agent.load_checkpoint(f"checkpoints/{args.env_name}_{args.divergence}_{args.alpha}_{i*50}")
+            else:
+                pass
 
         writer = SummaryWriter(f'./ResourceGathering_v0/{datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")}_SAC_{args.env_name}_{args.divergence}_{args.alpha}')
 
