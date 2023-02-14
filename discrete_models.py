@@ -194,7 +194,7 @@ class DiscreteSAC(object):
         _, _, action = self.actor.sample(state, preference)
 
         return action.detach().cpu().numpy()[0]
-    
+
     def divergance(self, pi, prior):
         if self.args.divergence == "alpha":
             if (self.args.alpha != 1) and (self.args.alpha != 0):
