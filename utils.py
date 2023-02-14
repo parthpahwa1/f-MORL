@@ -140,8 +140,18 @@ def discrete_train(agent, env, memory, writer, args):
             action = agent.select_action(state, pref)  # Sample action from policy
 
             # epsilon
-            if (total_numsteps+1)%2==0:
-                action = rng.randint(0, args.action_space.n)
+            
+
+            if args.env_name == "minecart-v0":
+                if (total_numsteps+1)%4==0 and (i_episode<500):
+                    action = rng.randint(0, args.action_space.n)
+                elif (total_numsteps+1)%10==0:
+                    action = rng.randint(0, args.action_space.n)
+                else:
+                    pass
+            else:
+                if (total_numsteps+1)%2==0:
+                    action = rng.randint(0, args.action_space.n)
 
             # If the number of steps is devisible by the batch size perform an update
             if (len(memory) > args.batch_size) and (i_episode != 0):
