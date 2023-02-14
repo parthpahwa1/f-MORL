@@ -1,5 +1,3 @@
-# export CC=/opt/homebrew/bin/gcc-11 
-
 import argparse
 import datetime
 import numpy as np
@@ -19,10 +17,10 @@ parser.add_argument('--env_name', default="fruit-tree-v0",
                     help='MOGYM enviroment (default: fruit-tree-v0)')
 parser.add_argument('--gamma', type=float, default=0.99, metavar='G',
                     help='discount factor for reward (default: 0.99)')
-parser.add_argument('--tau', type=float, default=0.005, metavar='G',
-                    help='target smoothing coefficient(τ) (default: 0.005)')
-parser.add_argument('--lr', type=float, default=1e-3, metavar='G',
-                    help='learning rate (default: 1e-3)')
+parser.add_argument('--tau', type=float, default=0.01, metavar='G',
+                    help='target smoothing coefficient(τ) (default: 0.01)')
+parser.add_argument('--lr', type=float, default=1e-4, metavar='G',
+                    help='learning rate (default: 1e-4)')
 parser.add_argument('--seed', type=int, default=123, metavar='N',
                     help='random seed (default: 123)')
 parser.add_argument('--batch_size', type=int, default=128, metavar='N',
@@ -39,35 +37,27 @@ parser.add_argument('--start_steps', type=int, default=10000, metavar='N',
                     help='Steps sampling random actions (default: 10000)')
 parser.add_argument('--target_update_interval', type=int, default= 1, metavar='N',
                     help='Value target update per no. of updates per step (default: 1)')
-parser.add_argument('--replay_size', type=int, default=4000, metavar='N',
-                    help='size of replay buffer (default: 4000)')
+parser.add_argument('--replay_size', type=int, default=10000, metavar='N',
+                    help='size of replay buffer (default: 10000)')
 parser.add_argument('--cuda', action="store_true",
                     help='run on CUDA (default: False)')
 parser.add_argument('--mps', action="store_true",
                     help='run on mps (default: False)')
 
+parser.add_argument('--evaluate', action="store_true",
+                    help="Evaluate or Train")
+
 parser.add_argument('--divergence', type=str, default='alpha',
                     help="Type of divergence constraint")
-parser.add_argument('--alpha', type=float, default=1, metavar='G',
-                    help='alpha divergence constant (default: 1)')
+parser.add_argument('--alpha', type=float, default=1.0, metavar='G',
+                    help='alpha divergence constant (default: 1.0)')
+
 args = parser.parse_args()
 
 # Assertions
 assert args.divergence in {"alpha", "variational_distance", "Jensen-Shannon"}
 assert args.env_name in {"fruit-tree-v0", "mo-lunar-lander-v2", "deep-sea-treasure-v0", 
-                         "minecart-v0", "four-room-v0", "resource-gathering-v0"}
-
-if not torch.backends.mps.is_available():
-    if not torch.backends.mps.is_built():
-        print("MPS not available because the current PyTorch install was not "
-              "built with MPS enabled.")
-        device = torch.device("cpu")
-    else:
-        print("MPS not available because the current MacOS version is not 12.3+ "
-              "and/or you do not have an MPS-enabled device on this machine.")
-        device = torch.device("cpu")
-else:
-    device = torch.device("mps")
+                         "minecart-v0", "four-room-v0", "resource-gathering-v0", "mo-mountaincar-v0"}
 
 if  torch.cuda.is_available():
     if args.cuda:
@@ -97,12 +87,23 @@ if __name__ == "__main__":
 
         agent = DiscreteSAC(args.num_inputs, args)
 
-        writer = SummaryWriter(f'./FruitTree_v0/{datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")}_SAC_{args.env_name}_{args.divergence}_{args.alpha}')
-        
-        memory = DiscreteMemory(args.replay_size,  args.gamma, args.seed)
+        i_max = 0
+        for i in range(0,60):
+            if os.path.exists(f"checkpoints/{args.env_name}_{args.divergence}_{args.alpha}_{i*50}"):
+                i_max = i*50
+            else:
+                pass
 
-        discrete_train(agent, env, memory, writer, args)
-    
+        if i_max != 0:
+            agent.load_checkpoint(f"checkpoints/{args.env_name}_{args.divergence}_{args.alpha}_{i_max}")
+
+        if not args.evaluate:
+            memory = DiscreteMemory(args.replay_size,  args.gamma, args.seed)
+            writer = SummaryWriter(f'./FruitTree_v0/{datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")}_SAC_{args.env_name}_{args.divergence}_{args.alpha}')
+            discrete_train(agent, env, memory, writer, args)
+        else:
+            print(discrete_evaluate(agent, env, args))
+
     elif args.env_name == "mo-lunar-lander-v2":
         args.action_dim = 4
         args.num_preferences = 4
@@ -113,11 +114,22 @@ if __name__ == "__main__":
 
         agent = DiscreteSAC(args.num_inputs, args)
 
-        writer = SummaryWriter(f'./LunarLander_v2/{datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")}_SAC_{args.env_name}_{args.divergence}_{args.alpha}')
+        i_max = 0
+        for i in range(0,60):
+            if os.path.exists(f"checkpoints/{args.env_name}_{args.divergence}_{args.alpha}_{i*50}"):
+                i_max = i*50
+            else:
+                pass
 
-        memory = DiscreteMemory(args.replay_size,  args.gamma, args.seed)
+        if i_max != 0:
+            agent.load_checkpoint(f"checkpoints/{args.env_name}_{args.divergence}_{args.alpha}_{i_max}")
 
-        discrete_train(agent, env, memory, writer, args)
+        if not args.evaluate:
+            memory = DiscreteMemory(args.replay_size,  args.gamma, args.seed)
+            writer = SummaryWriter(f'./LunarLander_v2/{datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")}_SAC_{args.env_name}_{args.divergence}_{args.alpha}')
+            discrete_train(agent, env, memory, writer, args)
+        else:
+            print(discrete_evaluate(agent, env, args))
 
     elif args.env_name == "deep-sea-treasure-v0":
         args.action_dim = 4
@@ -129,11 +141,22 @@ if __name__ == "__main__":
 
         agent = DiscreteSAC(args.num_inputs, args)
 
-        writer = SummaryWriter(f'./DeepSeaTreasure_v0/{datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")}_SAC_{args.env_name}_{args.divergence}_{args.alpha}')
+        i_max = 0
+        for i in range(0,60):
+            if os.path.exists(f"checkpoints/{args.env_name}_{args.divergence}_{args.alpha}_{i*50}"):
+                i_max = i*50
+            else:
+                pass
 
-        memory = DiscreteMemory(args.replay_size,  args.gamma, args.seed)
+        if i_max != 0:
+            agent.load_checkpoint(f"checkpoints/{args.env_name}_{args.divergence}_{args.alpha}_{i_max}")
 
-        discrete_train(agent, env, memory, writer, args)
+        if not args.evaluate:
+            memory = DiscreteMemory(args.replay_size,  args.gamma, args.seed)
+            writer = SummaryWriter(f'./DeepSeaTreasure_v0/{datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")}_SAC_{args.env_name}_{args.divergence}_{args.alpha}')
+            discrete_train(agent, env, memory, writer, args)
+        else:
+            print(discrete_evaluate(agent, env, args))
 
     elif args.env_name == "minecart-v0":
         args.action_dim = 6
@@ -141,15 +164,53 @@ if __name__ == "__main__":
         args.num_weights = 4
         args.action_space = env.action_space
         args.num_inputs = env.observation_space.shape[0]
-        args.ref_point = np.array([-19,-19,-19])
-
+        args.ref_point = np.array([-1e-3,-1e-3,-100])
+       
         agent = DiscreteSAC(args.num_inputs, args)
+        
+        i_max = 0
+        for i in range(0,60):
+            if os.path.exists(f"checkpoints/{args.env_name}_{args.divergence}_{args.alpha}_{i*50}"):
+                i_max = i*50
+            else:
+                pass
 
-        writer = SummaryWriter(f'./MineCart_v0/{datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")}_SAC_{args.env_name}_{args.divergence}_{args.alpha}')
+        if i_max != 0:
+            agent.load_checkpoint(f"checkpoints/{args.env_name}_{args.divergence}_{args.alpha}_{i_max}")
 
-        memory = DiscreteMemory(args.replay_size,  args.gamma, args.seed)
+        if not args.evaluate:
+            memory = DiscreteMemory(args.replay_size,  args.gamma, args.seed)
+            writer = SummaryWriter(f'./Minecart_v0/{datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")}_SAC_{args.env_name}_{args.divergence}_{args.alpha}')
+            discrete_train(agent, env, memory, writer, args)
+        else:
+            print(discrete_evaluate(agent, env, args))
 
-        discrete_train(agent, env, memory, writer, args)
+    elif args.env_name == "mo-mountaincar-v0":
+        args.action_dim = 3
+        args.num_preferences = 3
+        args.num_weights = 4
+        args.action_space = env.action_space
+        args.num_inputs = env.observation_space.shape[0]
+        args.ref_point = np.array([-10,-10,-10])
+       
+        agent = DiscreteSAC(args.num_inputs, args)
+        
+        i_max = 0
+        for i in range(0,60):
+            if os.path.exists(f"checkpoints/{args.env_name}_{args.divergence}_{args.alpha}_{i*50}"):
+                i_max = i*50
+            else:
+                pass
+
+        if i_max != 0:
+            agent.load_checkpoint(f"checkpoints/{args.env_name}_{args.divergence}_{args.alpha}_{i_max}")
+
+        if not args.evaluate:
+            memory = DiscreteMemory(args.replay_size,  args.gamma, args.seed)
+            writer = SummaryWriter(f'./MountainCar_v0/{datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")}_SAC_{args.env_name}_{args.divergence}_{args.alpha}')
+            discrete_train(agent, env, memory, writer, args)
+        else:
+            print(discrete_evaluate(agent, env, args))
 
     elif args.env_name == "four-room-v0":
         args.action_dim = 4
@@ -161,11 +222,19 @@ if __name__ == "__main__":
 
         agent = DiscreteSAC(args.num_inputs, args)
 
-        writer = SummaryWriter(f'./FourRoom_v0/{datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")}_SAC_{args.env_name}_{args.divergence}_{args.alpha}')
+        for i in range(0,60):
+            if os.path.exists(f"checkpoints/{args.env_name}_{args.divergence}_{args.alpha}_{i*50}"):
+                agent = DiscreteSAC(args.num_inputs, args)
+                agent.load_checkpoint(f"checkpoints/{args.env_name}_{args.divergence}_{args.alpha}_{i*50}")
+            else:
+                pass
 
-        memory = DiscreteMemory(args.replay_size,  args.gamma, args.seed)
-
-        discrete_train(agent, env, memory, writer, args)
+        if not args.evaluate:
+            memory = DiscreteMemory(args.replay_size,  args.gamma, args.seed)
+            writer = SummaryWriter(f'./FourRoom_v0/{datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")}_SAC_{args.env_name}_{args.divergence}_{args.alpha}')
+            discrete_train(agent, env, memory, writer, args)
+        else:
+            print(discrete_evaluate(agent, env, args))
 
     elif args.env_name == "resource-gathering-v0":
         args.action_dim = 4
@@ -177,26 +246,20 @@ if __name__ == "__main__":
 
         agent = DiscreteSAC(args.num_inputs, args)
 
-        writer = SummaryWriter(f'./ResourceGathering_v0/{datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")}_SAC_{args.env_name}_{args.divergence}_{args.alpha}')
+        for i in range(0,60):
+            if os.path.exists(f"checkpoints/{args.env_name}_{args.divergence}_{args.alpha}_{i*50}"):
+                agent = DiscreteSAC(args.num_inputs, args)
+                agent.load_checkpoint(f"checkpoints/{args.env_name}_{args.divergence}_{args.alpha}_{i*50}")
+            else:
+                pass
 
-        memory = DiscreteMemory(args.replay_size,  args.gamma, args.seed)
-
-        discrete_train(agent, env, memory, writer, args)
-
-    elif args.env_name == "mo-hopper-v4":
-        args.num_preferences = 3
-        args.num_weights = 1
-        args.action_space = env.action_space
-        args.action_space.n = 3
-        args.num_inputs = env.observation_space.shape[0]
-        agent = ContinuousSAC(args.num_inputs, args)
-
-        writer = SummaryWriter('./Hopper_runs/{}_SAC_{}_{}_{}'.format(datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S"), args.env_name,
-                                                                    args.policy, "autotune" if args.automatic_entropy_tuning else ""))
-        
-        memory = ContinuousReplayMemory(args.replay_size,  args.gamma, args.seed)
-
-        train_hopper(agent, env, memory, writer, args)
+        if not args.evaluate:
+            memory = DiscreteMemory(args.replay_size,  args.gamma, args.seed)
+            writer = SummaryWriter(f'./ResourceGathering_v0/{datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")}_SAC_{args.env_name}_{args.divergence}_{args.alpha}')
+            discrete_train(agent, env, memory, writer, args)
+        else:
+            print(discrete_evaluate(agent, env, args))
 
     else:
         raise NameError(f"{args.env_name} is not an enviroment.")
+
