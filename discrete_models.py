@@ -289,8 +289,11 @@ class DiscreteSAC(object):
 
         if not os.path.exists('checkpoints/'):
             os.makedirs('checkpoints/')
+            
         if ckpt_path is None:
             ckpt_path = "checkpoints/sac_checkpoint_{}_{}".format(env_name, suffix)
+        else:
+            ckpt_path = "checkpoints/" + ckpt_path
         
         print('Saving models to {}'.format(ckpt_path))
 
