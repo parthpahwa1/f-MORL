@@ -274,7 +274,7 @@ class DiscreteSAC(object):
         self.actor_optim.step()
 
         F_val = self.f_critic(state_batch, preference_batch)
-        target_F_value = (pi*G_action0).mean(dim=1).reshape(-1,1) - divergance_loss.clamp(-1, 1).detach()
+        target_F_value = (pi.detach()*G_action0).mean(dim=1).reshape(-1,1) 
         F_loss = F.mse_loss(F_val, target_F_value.detach())   
 
         # F critic backwards step
