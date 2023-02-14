@@ -170,6 +170,10 @@ class DiscreteSAC(object):
         self.f_critic = Discrete_F_Network(self.num_inputs, self.n_preferences, self.action_dim, args.hidden_size).to(device)
         self.f_optim = Adam(self.f_critic.parameters())
 
+        self.f_target = Discrete_F_Network(self.num_inputs, self.n_preferences, self.action_dim, args.hidden_size).to(device)
+
+        hard_update(self.f_target, self.f_critic)
+
         self.actor = DiscreteGaussianPolicy(self.num_inputs, self.n_preferences, self.action_dim, args.hidden_size).to(self.device)
         self.actor_optim = Adam(self.actor.parameters())
 
@@ -232,7 +236,7 @@ class DiscreteSAC(object):
 
         with torch.no_grad():
             reward = torch.sum(preference_batch * reward_batch, dim=-1).reshape(-1,1)
-            F_next_target = self.f_critic(next_state_batch, next_preference_batch)
+            F_next_target = self.f_target(next_state_batch, next_preference_batch)
             next_G_value = reward + mask_batch * self.gamma * (F_next_target)
         
         # Two Q-functions to mitigate positive bias in the policy improvement step
@@ -281,6 +285,7 @@ class DiscreteSAC(object):
         self.f_optim.step()     
 
         soft_update(self.critic_target, self.critic, self.tau)
+        soft_update(self.f_target, self.f_critic, self.tau)
 
         return G_loss.item(), F_loss.item(), policy_loss.item()
 
