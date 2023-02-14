@@ -308,6 +308,7 @@ class DiscreteSAC(object):
                     'critic_optimizer_state_dict': self.critic_optim.state_dict(),
                     'f_critic': self.f_critic.state_dict(),
                     'f_critic_optimizer_state_dict': self.f_optim.state_dict(),
+                    'f_target': self.f_target.state_dict(),
                     'policy_optimizer_state_dict': self.actor_optim.state_dict()}, ckpt_path)
 
     # Load model parameters
@@ -325,6 +326,8 @@ class DiscreteSAC(object):
 
             self.f_critic.load_state_dict(checkpoint['f_critic'])
             self.f_optim.load_state_dict(checkpoint['f_critic_optimizer_state_dict'])
+
+            self.f_target.load_state_dict(checkpoint["f_target"])
 
             self.actor_optim.load_state_dict(checkpoint['policy_optimizer_state_dict'])
 

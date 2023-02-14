@@ -19,8 +19,8 @@ parser.add_argument('--gamma', type=float, default=0.99, metavar='G',
                     help='discount factor for reward (default: 0.99)')
 parser.add_argument('--tau', type=float, default=0.01, metavar='G',
                     help='target smoothing coefficient(τ) (default: 0.01)')
-parser.add_argument('--lr', type=float, default=1e-3, metavar='G',
-                    help='learning rate (default: 1e-3)')
+parser.add_argument('--lr', type=float, default=1e-4, metavar='G',
+                    help='learning rate (default: 1e-4)')
 parser.add_argument('--seed', type=int, default=123, metavar='N',
                     help='random seed (default: 123)')
 parser.add_argument('--batch_size', type=int, default=128, metavar='N',

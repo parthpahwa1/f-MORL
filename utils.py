@@ -149,6 +149,10 @@ def discrete_train(agent, env, memory, writer, args):
                     action = rng.randint(0, args.action_space.n)
                 else:
                     pass
+
+            elif args.env_name == "mo-mountaincar-v0":
+                if (total_numsteps+1)%5==0:
+                    action = rng.randint(0, args.action_space.n)
             else:
                 if (total_numsteps+1)%2==0:
                     action = rng.randint(0, args.action_space.n)
@@ -180,7 +184,7 @@ def discrete_train(agent, env, memory, writer, args):
 
         writer.add_scalar('reward/train', episode_reward, i_episode)
 
-        if (i_episode % 250 == 0) and (i_episode != 0):
+        if (i_episode % 100 == 0) and (i_episode != 0):
 
             # Mark start of evaluation.
             print("Starting Evaluation")
