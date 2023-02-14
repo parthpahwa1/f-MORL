@@ -114,9 +114,16 @@ def discrete_train(agent, env, memory, writer, args):
     pref_list = rng.rand(2000, args.num_preferences)
     pref_list = pref_list/np.sum(pref_list, axis=1)[:, None]
     pref_list = torch.FloatTensor(pref_list)
+    
 
     if args.env_name == "minecart-v0":
         pareto_df = pd.read_csv("minecart_pareto.csv")
+        max_steps = 1000
+    elif args.env_name == "mo-minecart-v0":
+        pareto_df = pd.read_csv("minecart_pareto.csv")
+        max_steps = 200
+    else:
+        max_steps = 500
 
     total_numsteps = 0
     updates = 0
@@ -140,7 +147,7 @@ def discrete_train(agent, env, memory, writer, args):
             pref = rng.rand(args.num_preferences)
             pref = torch.FloatTensor(pref/np.sum(pref))
 
-        while not done and episode_steps < 500:
+        while not done and episode_steps < max_steps:
             action = agent.select_action(state, pref)  # Sample action from policy
 
             # epsilon
@@ -166,7 +173,7 @@ def discrete_train(agent, env, memory, writer, args):
                 if (total_numsteps+1)%2==0:
                     action = rng.randint(0, args.action_space.n)
 
-            # If the number of steps is devisible by the batch size perform an update
+            # If the number of steps is divisible by the batch size perform an update
             if (len(memory) > args.batch_size) and (i_episode != 0):
                 # Number of updates per step in environment
                 for i in range(args.updates_per_step):
@@ -361,8 +368,13 @@ def discrete_evaluate(agent, env, args):
                     # print(f"Breaking {temp_pref} evaluation. Count too high.")
                     done = True
 
+            if args.env_name == "mo-mountaincar-v0":
+                if count > 199:
+                    # print(f"Breaking {temp_pref} evaluation. Count too high.")
+                    done = True
+
             if args.env_name == "mo-lunar-lander-v2":
-                if count > 1000:
+                if count > 999:
                     # print(f"Breaking {temp_pref} evaluation. Count too high.")
                     done = True
 
@@ -372,7 +384,7 @@ def discrete_evaluate(agent, env, args):
                     done = True
 
             if args.env_name == "minecart-v0":
-                if count > 1000:
+                if count > 999:
                     # print(f"Breaking {temp_pref} evaluation. Count too high.")
                     done = True
 
@@ -381,8 +393,8 @@ def discrete_evaluate(agent, env, args):
                 eval_reward.append(np.dot(temp_pref, reward))
             else:
                 pass
-            
-
+        
+            # print(temp_reward)
             state = next_state
 
             count += 1
@@ -396,14 +408,22 @@ def discrete_evaluate(agent, env, args):
     if args.env_name == "minecart-v0":
         cnt1, cnt2 = find_in(reward_list, pareto_df, 0.0)
         act_precision = cnt1 / len(reward_list)
+        print(act_precision)
         act_recall = cnt2 / len(pareto_df)
         act_f1 = 2 * act_precision * act_recall / (act_precision + act_recall)
     
-    # Mark end of evaluation
-    tick = time.perf_counter()
+        # Mark end of evaluation
+        tick = time.perf_counter()
 
-    print(f"Evaluation complete in {round(tick-tock,2)}s.")
-    env.close()
+        print(f"Evaluation complete in {round(tick-tock,2)}s.")
+        env.close()
 
-    return (avg_reward, hyper, act_precision, act_recall, act_f1)
+        return (avg_reward, hyper, act_precision, act_recall, act_f1)
 
+    else:
+        tick = time.perf_counter()
+
+        print(f"Evaluation complete in {round(tick-tock,2)}s.")
+        env.close()
+
+        return {"Step": agent.i_episode,"avg_reward": avg_reward, "Value": hyper}
