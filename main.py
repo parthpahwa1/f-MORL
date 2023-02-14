@@ -54,7 +54,7 @@ args = parser.parse_args()
 # Assertions
 assert args.divergence in {"alpha", "variational_distance", "Jensen-Shannon"}
 assert args.env_name in {"fruit-tree-v0", "mo-lunar-lander-v2", "deep-sea-treasure-v0", 
-                         "minecart-v0", "four-room-v0", "resource-gathering-v0"}
+                         "minecart-v0", "four-room-v0", "resource-gathering-v0", "mo-mountaincar-v0"}
 
 if not torch.backends.mps.is_available():
     if not torch.backends.mps.is_built():
@@ -169,6 +169,32 @@ if __name__ == "__main__":
             agent.load_checkpoint(f"checkpoints/{args.env_name}_{args.divergence}_{args.alpha}_{i_max}")
 
         writer = SummaryWriter(f'./MineCart_v0/{datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")}_SAC_{args.env_name}_{args.divergence}_{args.alpha}')
+
+        memory = DiscreteMemory(args.replay_size,  args.gamma, args.seed)
+
+        discrete_train(agent, env, memory, writer, args)
+
+    elif args.env_name == "mo-mountaincar-v0":
+        args.action_dim = 3
+        args.num_preferences = 3
+        args.num_weights = 4
+        args.action_space = env.action_space
+        args.num_inputs = env.observation_space.shape[0]
+        args.ref_point = np.array([-10,-10,-10])
+       
+        agent = DiscreteSAC(args.num_inputs, args)
+        
+        i_max = 0
+        for i in range(0,60):
+            if os.path.exists(f"checkpoints/{args.env_name}_{args.divergence}_{args.alpha}_{i*50}"):
+                i_max = i*50
+            else:
+                pass
+
+        if i_max != 0:
+            agent.load_checkpoint(f"checkpoints/{args.env_name}_{args.divergence}_{args.alpha}_{i_max}")
+
+        writer = SummaryWriter(f'./MountainCar_v0/{datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")}_SAC_{args.env_name}_{args.divergence}_{args.alpha}')
 
         memory = DiscreteMemory(args.replay_size,  args.gamma, args.seed)
 
