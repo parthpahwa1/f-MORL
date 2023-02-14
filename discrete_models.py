@@ -147,6 +147,8 @@ class DiscreteSAC(object):
         self.gamma = args.gamma
         self.tau = args.tau
         self.alpha = args.alpha
+
+        self.i_episode = 0
         
         device = ""
         if args.cuda:
@@ -167,6 +169,10 @@ class DiscreteSAC(object):
 
         self.f_critic = Discrete_F_Network(self.num_inputs, self.n_preferences, self.action_dim, args.hidden_size).to(device)
         self.f_optim = Adam(self.f_critic.parameters())
+
+        self.f_target = Discrete_F_Network(self.num_inputs, self.n_preferences, self.action_dim, args.hidden_size).to(device)
+
+        hard_update(self.f_target, self.f_critic)
 
         self.actor = DiscreteGaussianPolicy(self.num_inputs, self.n_preferences, self.action_dim, args.hidden_size).to(self.device)
         self.actor_optim = Adam(self.actor.parameters())
@@ -208,7 +214,7 @@ class DiscreteSAC(object):
             return -(t+1)*torch.log((t+1)/(2))+t*torch.log(t)
         else:
             pass
-         
+
     def update_parameters(self, memory, batch_size, updates):
         # Sample a batch from memory
         state_batch, preference_batch, action_batch, reward_batch, next_state_batch, next_preference_batch, mask_batch = memory.sample(batch_size=batch_size)
@@ -230,7 +236,7 @@ class DiscreteSAC(object):
 
         with torch.no_grad():
             reward = torch.sum(preference_batch * reward_batch, dim=-1).reshape(-1,1)
-            F_next_target = self.f_critic(next_state_batch, next_preference_batch)
+            F_next_target = self.f_target(next_state_batch, next_preference_batch)
             next_G_value = reward + mask_batch * self.gamma * (F_next_target)
         
         # Two Q-functions to mitigate positive bias in the policy improvement step
@@ -268,7 +274,8 @@ class DiscreteSAC(object):
         self.actor_optim.step()
 
         F_val = self.f_critic(state_batch, preference_batch)
-        target_F_value = next_G_value - self.alpha*divergance_loss.clamp(-1, 1)
+        # target_F_value = next_G_value - self.alpha*divergance_loss.clamp(-1, 1)
+        target_F_value = next_G_value 
         F_loss = F.mse_loss(F_val, target_F_value.detach())   
 
         # F critic backwards step
@@ -276,43 +283,65 @@ class DiscreteSAC(object):
         F_loss.backward()
         torch.nn.utils.clip_grad_norm_(self.f_critic.parameters(), 1)
         self.f_optim.step()     
-        
 
         soft_update(self.critic_target, self.critic, self.tau)
+        soft_update(self.f_target, self.f_critic, self.tau)
 
         return G_loss.item(), F_loss.item(), policy_loss.item()
 
     # Save model parameters
     def save_checkpoint(self, env_name, suffix="", ckpt_path=None):
+
         if not os.path.exists('checkpoints/'):
             os.makedirs('checkpoints/')
+            
         if ckpt_path is None:
             ckpt_path = "checkpoints/sac_checkpoint_{}_{}".format(env_name, suffix)
+        else:
+            ckpt_path = "checkpoints/" + ckpt_path
+        
         print('Saving models to {}'.format(ckpt_path))
+
         torch.save({'policy_state_dict': self.actor.state_dict(),
                     'critic_state_dict': self.critic.state_dict(),
                     'critic_target_state_dict': self.critic_target.state_dict(),
                     'critic_optimizer_state_dict': self.critic_optim.state_dict(),
+                    'f_critic': self.f_critic.state_dict(),
+                    'f_critic_optimizer_state_dict': self.f_optim.state_dict(),
+                    'f_target': self.f_target.state_dict(),
                     'policy_optimizer_state_dict': self.actor_optim.state_dict()}, ckpt_path)
 
     # Load model parameters
     def load_checkpoint(self, ckpt_path, evaluate=False):
+
         print('Loading models from {}'.format(ckpt_path))
+
         if ckpt_path is not None:
             checkpoint = torch.load(ckpt_path)
             self.actor.load_state_dict(checkpoint['policy_state_dict'])
             self.critic.load_state_dict(checkpoint['critic_state_dict'])
+
             self.critic_target.load_state_dict(checkpoint['critic_target_state_dict'])
             self.critic_optim.load_state_dict(checkpoint['critic_optimizer_state_dict'])
+
+            self.f_critic.load_state_dict(checkpoint['f_critic'])
+            self.f_optim.load_state_dict(checkpoint['f_critic_optimizer_state_dict'])
+
+            self.f_target.load_state_dict(checkpoint["f_target"])
+
             self.actor_optim.load_state_dict(checkpoint['policy_optimizer_state_dict'])
+
+            self.i_episode = int(ckpt_path.split("_")[-1])
 
             if evaluate:
                 self.actor.eval()
                 self.critic.eval()
                 self.critic_target.eval()
+                self.f_critic.eval()
             else:
                 self.actor.train()
                 self.critic.train()
                 self.critic_target.train()
+                self.f_critic.train()
 
     pass
