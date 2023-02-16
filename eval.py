@@ -193,7 +193,14 @@ q_opt = dict(x=q_x,
                 name='predicted')
 
 
-layout_opt = dict(title="Mountain Car: Recovered CCS",
+if args.divergence == "alpha":
+    layout_opt = dict(title=f"Mountain Car Recovered CCS\n\
+    {args.divergence}: {args.alpha}",
+    xaxis=dict(title='Time penalty'),
+    yaxis=dict(title='Reverse Penalty'))
+else:
+    layout_opt = dict(title=f"Mountain Car Recovered CCS\n\
+    {args.divergence}",
     xaxis=dict(title='Time penalty'),
     yaxis=dict(title='Reverse Penalty'))
 
@@ -232,7 +239,7 @@ for probe in probe_list:
         terminal = False
         ttrw = np.array([0.0, 0.0, 0.0])
         while not terminal:
-            action = agent.act(state, torch.from_numpy(w).type(FloatTensor), FloatTensor([speed_param]).reshape(1,-1))
+            action = agent.act(state, torch.from_numpy(w).type(FloatTensor))
             next_state, reward, terminal, truncated, info = env.step(action)
             state = next_state
             next_preference = FloatTensor(probe)
@@ -272,4 +279,4 @@ for probe in probe_list:
     df = pd.concat([df, df_temp])      
     print('-----------------------------------------------------------------')
 
-df.to_csv(f'{args.alpha}_alpha_mt.csv', index=False)
+df.to_csv(f'{args.alpha}_{args.divergence}_mt.csv', index=False)
