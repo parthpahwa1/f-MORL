@@ -8,6 +8,7 @@ from utils import *
 from discrete_models import *
 from continuous_models import *
 from replay_memory import *
+from tqdm import tqdm
 import gym
 import sys
 import os
@@ -121,7 +122,7 @@ q_y = []
 act_x = []
 act_y = []
 
-for i in range(500):
+for i in tqdm(range(500)):
     w = np.random.randn(3)
     w[2] = 0
     w = np.abs(w) / np.linalg.norm(w, ord=1)
@@ -202,73 +203,73 @@ df = pd.DataFrame(columns=['Train Episode', 'Steps to terminate', 'Reward', 'Lef
 
 # for key in model_list.keys():
 #     model_loc = model_list[key]
-#     model = torch.load(model_loc)
-#     agent = MetaAgent(model, None, args, is_train=False)
+#     agent.load_checkpoint(model_loc)
 
-# probe_list = np.array([[0.9, 0.05, 0.05], [0.9, 0.1, 0.0], [0.9, 0, 0.1], [0.5, 0., 0.5], [0.5, 0.5, 0 ], [0., 0.5, 0.5], [0.1, 0.8, 0.1], [0.1, 0.1, 0.8]])
+probe_list = np.array([[0.9, 0.05, 0.05], [0.9, 0.1, 0.0], [0.9, 0, 0.1], [0.5, 0., 0.5], [0.5, 0.5, 0 ], [0., 0.5, 0.5], [0.1, 0.8, 0.1], [0.1, 0.1, 0.8]])
 
-# for probe in probe_list:
-#     steps_to_terminate = []
-#     action_count_tracker = {
-#         0: [],
-#         1: [],
-#         2: []
-#     }
-#     reward_list = []
-#     for i in range(100):
-#         w_e = probe
-#         w = w_e
+for probe in probe_list:
+    steps_to_terminate = []
+    action_count_tracker = {
+        0: [],
+        1: [],
+        2: []
+    }
+    reward_list = []
+    for i in range(100):
+        w_e = probe
+        w = w_e
 
-#         action_count= {
-#             0: 0,
-#             1: 0,
-#             2: 0
-#         }
+        action_count= {
+            0: 0,
+            1: 0,
+            2: 0
+        }
 
 
-#         env.reset()
-#         cnt = 0
-#         state = env.reset()[0]
-#         terminal = False
-#         ttrw = np.array([0.0, 0.0, 0.0])
-#         while not terminal:
-#             action = agent.act(state, torch.from_numpy(w).type(FloatTensor), FloatTensor([speed_param]).reshape(1,-1))
-#             next_state, reward, terminal, truncated, info = env.step(action)
-#             state = next_state
-#             next_preference = FloatTensor(probe)
+        env.reset()
+        cnt = 0
+        state = env.reset()[0]
+        terminal = False
+        ttrw = np.array([0.0, 0.0, 0.0])
+        while not terminal:
+            action = agent.act(state, torch.from_numpy(w).type(FloatTensor), FloatTensor([speed_param]).reshape(1,-1))
+            next_state, reward, terminal, truncated, info = env.step(action)
+            state = next_state
+            next_preference = FloatTensor(probe)
 
-#             if next_state[0] - state[0] > 0 and action == 2: 
-#                 reward += 0.5
-#             if next_state[0] - state[0] < 0 and action == 0: 
-#                 reward += 0.5
+            if next_state[0] - state[0] > 0 and action == 2: 
+                reward += 0.5
+            if next_state[0] - state[0] < 0 and action == 0: 
+                reward += 0.5
 
-#             action_count[action] += 1
+            action_count[action] += 1
             
-#             if cnt > 300:
-#                 terminal = True
-#             ttrw = ttrw + reward * np.power(args.gamma, cnt)
-#             cnt += 1
+            if cnt > 300:
+                terminal = True
+            ttrw = ttrw + reward * np.power(args.gamma, cnt)
+            cnt += 1
         
-#         ttrw_w = w.dot(FloatTensor(ttrw))
+        ttrw_w = w.dot(FloatTensor(ttrw))
 
-#         steps_to_terminate.append(cnt)
-#         reward_list.append(ttrw_w)
-#         action_count_tracker[0].append(action_count[0])
-#         action_count_tracker[1].append(action_count[1])
-#         action_count_tracker[2].append(action_count[2])
+        steps_to_terminate.append(cnt)
+        reward_list.append(ttrw_w)
+        action_count_tracker[0].append(action_count[0])
+        action_count_tracker[1].append(action_count[1])
+        action_count_tracker[2].append(action_count[2])
     
-#     print('Reward:', np.mean(np.array(reward_list)))
-#     print ('steps_to_terminate:' , np.mean(np.array(steps_to_terminate)))
-#     print ('Left acceleration mean:',np.mean(np.array(action_count_tracker[0])))
-#     print ('Do not accelerate:',np.mean(np.array(action_count_tracker[1])))
-#     print ('Right acceleratio:',np.mean(np.array(action_count_tracker[2])))
-#     print ('Time Penalty, Left acceleration penalty, Right acceleration penalty:', probe)
+    print('Reward:', np.mean(np.array(reward_list)))
+    print ('steps_to_terminate:' , np.mean(np.array(steps_to_terminate)))
+    print ('Left acceleration mean:',np.mean(np.array(action_count_tracker[0])))
+    print ('Do not accelerate:',np.mean(np.array(action_count_tracker[1])))
+    print ('Right acceleratio:',np.mean(np.array(action_count_tracker[2])))
+    print ('Time Penalty, Left acceleration penalty, Right acceleration penalty:', probe)
 
-#     data = [449, np.mean(np.array(steps_to_terminate)), np.mean(np.array(reward_list)), np.mean(np.array(action_count_tracker[0])), np.mean(np.array(action_count_tracker[2])) ,np.mean(np.array(action_count_tracker[1])), probe[0], probe[1], probe[2]]
+    data = [449, np.mean(np.array(steps_to_terminate)), np.mean(np.array(reward_list)), np.mean(np.array(action_count_tracker[0])), np.mean(np.array(action_count_tracker[2])) ,np.mean(np.array(action_count_tracker[1])), probe[0], probe[1], probe[2]]
     
-#     data = np.array(data).reshape(1, -1)
-#     df_temp = pd.DataFrame(data, columns=['Train Episode', 'Steps to terminate', 'Reward', 'Left Action', 'Right Action', 'No Action', 'Time Penalty', 'Left penalty', 'Right penalty'])
+    data = np.array(data).reshape(1, -1)
+    df_temp = pd.DataFrame(data, columns=['Train Episode', 'Steps to terminate', 'Reward', 'Left Action', 'Right Action', 'No Action', 'Time Penalty', 'Left penalty', 'Right penalty'])
     
-#     df = pd.concat([df, df_temp])      
-#     print('-----------------------------------------------------------------')
-# df.to_csv('experiment_mt_1.csv')
+    df = pd.concat([df, df_temp])      
+    print('-----------------------------------------------------------------')
+
+df.to_csv(f'{args.alpha}_alpha_mt.csv', index=False)
