@@ -210,6 +210,7 @@ if __name__ == "__main__":
             writer = SummaryWriter(f'./MountainCar_v0/{datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")}_SAC_{args.env_name}_{args.divergence}_{args.alpha}')
             discrete_train(agent, env, memory, writer, args)
         else:
+            args.ref_point = np.array([-199,-10,-10])
             print(discrete_evaluate(agent, env, args))
 
     elif args.env_name == "four-room-v0":
