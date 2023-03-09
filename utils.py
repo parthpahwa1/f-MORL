@@ -440,6 +440,10 @@ def continuous_train(agent, env, memory, writer, args):
         while not done and episode_steps < max_steps:
             action = agent.select_action(state, pref)  # Sample action from policy
 
+            # Clamp actions here 
+            if args.env_name in ["mo-hopper-v4", "mo-halfcheetah-v4"]:
+                action = torch.clamp(action, min=-1, max=1)
+
             if (total_numsteps+1)%2==0:
                 action = rng.randint(0,1,size=args.action_dim)
 
@@ -482,31 +486,30 @@ def continuous_train(agent, env, memory, writer, args):
             eval_reward = []
             reward_list = []
 
-            if args.env_name != "mo-mountaincar-v0":
-                for eval_pref in pref_list:
-                    state, _ = env.reset()
-                    eval_pref = eval_pref.clone().detach().cpu()
-                    temp_pref = eval_pref.numpy()
-                    done = False
+            for eval_pref in pref_list:
+                state, _ = env.reset()
+                eval_pref = eval_pref.clone().detach().cpu()
+                temp_pref = eval_pref.numpy()
+                done = False
 
-                    temp_reward = np.zeros(args.num_preferences)
-                    count = 0
-                    while not done:
-                        action = agent.act(state, eval_pref)
-                        next_state, reward, done, _, _ = env.step(action)
+                temp_reward = np.zeros(args.num_preferences)
+                count = 0
+                while not done:
+                    action = agent.act(state, eval_pref)
+                    next_state, reward, done, _, _ = env.step(action)
 
-                        temp_reward = temp_reward + reward * np.power(args.gamma, count)
+                    temp_reward = temp_reward + reward * np.power(args.gamma, count)
 
-                        if done:
-                            reward_list.append(temp_reward)
-                            eval_reward.append(np.dot(temp_pref, reward))
-                        else:
-                            pass
-                        
+                    if done:
+                        reward_list.append(temp_reward)
+                        eval_reward.append(np.dot(temp_pref, reward))
+                    else:
+                        pass
+                    
 
-                        state = next_state
+                    state = next_state
 
-                        count += 1
+                    count += 1
 
                 reward_list = np.array(list(set([tuple(i) for i in reward_list])))
                 avg_reward = sum(eval_reward)/len(eval_reward)

@@ -135,6 +135,9 @@ class ContinuousGaussianPolicy(nn.Module):
         m = torch.distributions.Normal(loc=mean, scale=std)
         
         action = m.sample()
+        
+        # Clamp action for mo-hopper-v4
+
         log_prob = m.log_prob(action)
 
         return action, log_prob, action
@@ -202,6 +205,7 @@ class ContinuousSAC(object):
         preference = torch.FloatTensor(preference).to(self.device).unsqueeze(0)
 
         action, _, _ = self.actor.sample(state, preference)
+
         return action.detach().cpu().numpy()[0]
     
     def act(self, state, preference):
@@ -279,6 +283,7 @@ class ContinuousSAC(object):
 
         policy_loss = log_pi - G_action0
         policy_loss = policy_loss.mean()
+        policy_loss.clamp(-1, 1)
         
         # prior = torch.softmax(G_action0, dim=1)
         # divergance_loss = self.divergance(pi, prior.detach())
@@ -319,7 +324,7 @@ class ContinuousSAC(object):
         if ckpt_path is None:
             ckpt_path = "checkpoints/{}/{}_{}".format(env_name, env_name, suffix)
         else:
-            ckpt_path = "checkpoints/" + ckpt_path
+            ckpt_path = f"checkpoints/{env_name}/" + ckpt_path
         
         print('Saving models to {}'.format(ckpt_path))
 

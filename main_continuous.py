@@ -76,6 +76,7 @@ if __name__ == "__main__":
     env.reset()
 
     if args.env_name == "mo-hopper-v4":
+        # If set cost_objective to zero set argsnum_preferences = 2
         args.action_dim = 3
         args.num_preferences = 3
         args.num_weights = 4
