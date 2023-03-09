@@ -82,6 +82,7 @@ if __name__ == "__main__":
         args.action_space = env.action_space
         args.num_inputs = env.observation_space.shape[0]
         args.ref_point = np.zeros(args.num_preferences)
+        args.max_steps = 1000
 
         agent = ContinuousSAC(args.num_inputs, args)
 

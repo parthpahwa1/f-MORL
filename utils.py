@@ -416,15 +416,7 @@ def continuous_train(agent, env, memory, writer, args):
     pref_list = pref_list/np.sum(pref_list, axis=1)[:, None]
     pref_list = torch.FloatTensor(pref_list)
     
-
-    if args.env_name == "minecart-v0":
-        pareto_df = pd.read_csv("minecart_pareto.csv")
-        max_steps = 1000
-    elif args.env_name == "mo-minecart-v0":
-        pareto_df = pd.read_csv("minecart_pareto.csv")
-        max_steps = 200
-    else:
-        max_steps = 500
+    max_steps = args.max_steps
 
     total_numsteps = 0
     updates = 0
@@ -460,8 +452,6 @@ def continuous_train(agent, env, memory, writer, args):
                     writer.add_scalar('loss/critic_1', critic_1_loss, updates)
                     writer.add_scalar('loss/critic_2', critic_2_loss, updates)
                     writer.add_scalar('loss/policy', policy_loss, updates)
-                    # writer.add_scalar('loss/entropy_loss', ent_loss, updates)
-                    # writer.add_scalar('entropy_temprature/alpha', args.alpha, updates)
                     updates += 1
             
             next_state, reward, done, truncated, info = env.step(action) # Step
@@ -497,11 +487,6 @@ def continuous_train(agent, env, memory, writer, args):
                     state, _ = env.reset()
                     eval_pref = eval_pref.clone().detach().cpu()
                     temp_pref = eval_pref.numpy()
-                    # value_f0 = agent.f_critic(torch.FloatTensor(state.reshape(1,-1)), eval_pref.reshape(1,-1))
-                    # value_g0 = agent.critic_target(torch.FloatTensor(state.reshape(1,-1)), eval_pref.reshape(1,-1), torch.FloatTensor(np.array([[0.0]])))[0]
-                    # value_g1 = agent.critic_target(torch.FloatTensor(state.reshape(1,-1)), eval_pref.reshape(1,-1), torch.FloatTensor(np.array([[1.0]])))[0]
-                    # value_g2 = agent.critic_target(torch.FloatTensor(state.reshape(1,-1)), eval_pref.reshape(1,-1), torch.FloatTensor(np.array([[2.0]])))[0]
-                    # value_g3 = agent.critic_target(torch.FloatTensor(state.reshape(1,-1)), eval_pref.reshape(1,-1), torch.FloatTensor(np.array([[3.0]])))[0]
                     done = False
 
                     temp_reward = np.zeros(args.num_preferences)
@@ -510,32 +495,7 @@ def continuous_train(agent, env, memory, writer, args):
                         action = agent.act(state, eval_pref)
                         next_state, reward, done, _, _ = env.step(action)
 
-                        temp_reward = temp_reward + reward * np.power(args.gamma, count)  
-
-                        if args.env_name == "deep-sea-treasure-v0":
-                            if count > 25:
-                                # print(f"Breaking {temp_pref} evaluation. Count too high.")
-                                done = True
-
-                        if args.env_name == "mo-mountaincar-v0":
-                            if count > 199:
-                                # print(f"Breaking {temp_pref} evaluation. Count too high.")
-                                done = True
-
-                        if args.env_name == "mo-lunar-lander-v2":
-                            if count > 999:
-                                # print(f"Breaking {temp_pref} evaluation. Count too high.")
-                                done = True
-
-                        if args.env_name == "resource-gathering-v0":
-                            if count > 100:
-                                # print(f"Breaking {temp_pref} evaluation. Count too high.")
-                                done = True
-
-                        if args.env_name == "minecart-v0":
-                            if count > 999:
-                                # print(f"Breaking {temp_pref} evaluation. Count too high.")
-                                done = True
+                        temp_reward = temp_reward + reward * np.power(args.gamma, count)
 
                         if done:
                             reward_list.append(temp_reward)
@@ -556,20 +516,6 @@ def continuous_train(agent, env, memory, writer, args):
 
                 writer.add_scalar('Test Average Reward', avg_reward, i_episode)
                 writer.add_scalar('Hypervolume', hyper, i_episode)
-
-                if args.env_name == "minecart-v0":
-                    cnt1, cnt2 = find_in(reward_list, pareto_df.values, 0.001)
-                    act_precision = cnt1 / len(reward_list)
-                    act_recall = cnt2 / len(pareto_df)
-
-                    if act_precision == 0 and act_recall == 0:
-                        act_f1 = 0.0
-                    else:
-                        act_f1 = 2 * act_precision * act_recall / (act_precision + act_recall)
-
-                    writer.add_scalar('pareto_precision', act_precision, i_episode)
-                    writer.add_scalar('pareto_recall', act_recall, i_episode)
-                    writer.add_scalar('pareto_f1', act_f1, i_episode)
                 
                 # Mark end of evaluation
                 tick = time.perf_counter()
