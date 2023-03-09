@@ -55,7 +55,7 @@ args = parser.parse_args()
 
 # Assertions
 assert args.divergence in {"alpha", "variational_distance", "Jensen-Shannon"}
-assert args.env_name in {"mo-hopper-v4"}
+assert args.env_name in {"mo-hopper-v4", "mo-halfcheetah-v4"}
 
 if  torch.cuda.is_available():
     if args.cuda:
@@ -76,9 +76,11 @@ if __name__ == "__main__":
     env.reset()
 
     if args.env_name == "mo-hopper-v4":
-        # If set cost_objective to zero set argsnum_preferences = 2
+        # If set cost_objective=False set argsnum_preferences = 2, else set args.num_preferences=3
+        env = mo_gymnasium.make(args.env_name, cost_objective=False)
+        env.reset()
         args.action_dim = 3
-        args.num_preferences = 3
+        args.num_preferences = 2
         args.num_weights = 4
         args.action_space = env.action_space
         args.num_inputs = env.observation_space.shape[0]
@@ -103,7 +105,34 @@ if __name__ == "__main__":
             continuous_train(agent, env, memory, writer, args)
         else:
             print(continuous_evaluate(agent, env, args))
+    
+    elif args.env_name == "mo-halfcheetah-v4":
+        args.action_dim = 6
+        args.num_preferences = 2
+        args.num_weights = 4
+        args.action_space = env.action_space
+        args.num_inputs = env.observation_space.shape[0]
+        args.ref_point = np.zeros(args.num_preferences)
+        args.max_steps = 1000
 
+        agent = ContinuousSAC(args.num_inputs, args)
+
+        i_max = 0
+        for i in range(0,60):
+            if os.path.exists(f"checkpoints/{args.env_name}/{args.env_name}_{args.divergence}_{args.alpha}_{i*50}"):
+                i_max = i*50
+            else:
+                pass
+
+        if i_max != 0:
+            agent.load_checkpoint(f"checkpoints/{args.env_name}/{args.env_name}_{args.divergence}_{args.alpha}_{i_max}")
+
+        if not args.evaluate:
+            memory = ContinuousMemory(args.replay_size,  args.gamma, args.seed)
+            writer = SummaryWriter(f'./tensorboard_logs/{args.env_name.replace("-", "_")}/{datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")}_SAC_{args.env_name}_{args.divergence}_{args.alpha}')
+            continuous_train(agent, env, memory, writer, args)
+        else:
+            print(continuous_evaluate(agent, env, args))
 
     else:
         raise NameError(f"{args.env_name} is not an enviroment.")

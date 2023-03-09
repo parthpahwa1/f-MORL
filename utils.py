@@ -441,7 +441,7 @@ def continuous_train(agent, env, memory, writer, args):
             action = agent.select_action(state, pref)  # Sample action from policy
 
             # Clamp actions here 
-            if args.env_name in ["mo-hopper-v4", "mo-halfcheetah-v4"]:
+            if args.env_name in ["mo-hopper-v4", "mo-halfcheetah-v4", "mo-mountaincarcontinuous-v0"]:
                 action = np.clip(action, -1, 1)
 
             if (total_numsteps+1)%2==0:
