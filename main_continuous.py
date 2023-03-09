@@ -98,7 +98,7 @@ if __name__ == "__main__":
 
         if not args.evaluate:
             memory = ContinuousMemory(args.replay_size,  args.gamma, args.seed)
-            writer = SummaryWriter(f'./{args.env_name.replace("-", "_")}/{datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")}_SAC_{args.env_name}_{args.divergence}_{args.alpha}')
+            writer = SummaryWriter(f'./tensorboard_logs/{args.env_name.replace("-", "_")}/{datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")}_SAC_{args.env_name}_{args.divergence}_{args.alpha}')
             continuous_train(agent, env, memory, writer, args)
         else:
             print(continuous_evaluate(agent, env, args))

@@ -139,3 +139,5 @@ checkpoints/
 FruitTree_d7_v0/
 MountainCar_v0/
 misc/
+mo_hopper_v4/
+tensorboard_logs/
