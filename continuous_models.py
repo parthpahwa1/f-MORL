@@ -312,9 +312,12 @@ class ContinuousSAC(object):
 
         if not os.path.exists('checkpoints/'):
             os.makedirs('checkpoints/')
+        
+        if not os.path.exists(f'checkpoints/{env_name}'):
+            os.makedirs(f'checkpoints/{env_name}')
             
         if ckpt_path is None:
-            ckpt_path = "checkpoints/sac_checkpoint_{}_{}".format(env_name, suffix)
+            ckpt_path = "checkpoints/{}/{}_{}".format(env_name, env_name, suffix)
         else:
             ckpt_path = "checkpoints/" + ckpt_path
         

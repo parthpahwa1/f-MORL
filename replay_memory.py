@@ -127,8 +127,11 @@ class ContinuousMemory:
         if not os.path.exists('checkpoints/'):
             os.makedirs('checkpoints/')
 
+        if not os.path.exists(f'checkpoints/{env_name}'):
+            os.makedirs(f'checkpoints/{env_name}')
+
         if save_path is None:
-            save_path = "checkpoints/sac_buffer_{}_{}".format(env_name, suffix)
+            save_path = "checkpoints/{}/{}_{}".format(env_name,env_name, suffix)
         print('Saving buffer to {}'.format(save_path))
 
         with open(save_path, 'wb') as f:
