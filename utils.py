@@ -442,7 +442,7 @@ def continuous_train(agent, env, memory, writer, args):
 
             # Clamp actions here 
             if args.env_name in ["mo-hopper-v4", "mo-halfcheetah-v4"]:
-                action = torch.clamp(action, min=-1, max=1)
+                action = np.clip(action, -1, 1)
 
             if (total_numsteps+1)%2==0:
                 action = rng.randint(0,1,size=args.action_dim)
