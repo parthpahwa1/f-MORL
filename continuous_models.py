@@ -18,9 +18,9 @@ def weights_init_(m):
         torch.nn.init.constant_(m.bias, 0)
 
 
-class Discrete_F_Network(nn.Module):
+class Continuous_F_Network(nn.Module):
     def __init__(self, num_inputs, num_preferences, action_dim, hidden_dim):
-        super(Discrete_F_Network, self).__init__()
+        super(Continuous_F_Network, self).__init__()
 
         self.linear1 = nn.Linear(num_inputs + num_preferences, (num_inputs + num_preferences)*16)
         self.linear2a = nn.Linear((num_inputs + num_preferences)*16, (num_inputs + num_preferences)*32)
@@ -42,9 +42,9 @@ class Discrete_F_Network(nn.Module):
         return x
 
 
-class Discrete_G_Network(nn.Module):
+class Continuous_G_Network(nn.Module):
     def __init__(self, num_inputs, num_preferences, action_dim, hidden_dim):
-        super(Discrete_G_Network, self).__init__()
+        super(Continuous_G_Network, self).__init__()
         
         # Q1 architecture
         self.linear1 = nn.Linear(num_inputs + num_preferences + action_dim, (num_inputs + num_preferences)*16)
@@ -81,9 +81,9 @@ class Discrete_G_Network(nn.Module):
         return x1, x2
 
 
-class DiscreteGaussianPolicy(nn.Module):
+class ContinuousGaussianPolicy(nn.Module):
     def __init__(self, num_inputs, num_preferences, action_dim, hidden_dim):
-        super(DiscreteGaussianPolicy, self).__init__()
+        super(ContinuousGaussianPolicy, self).__init__()
         
         self.linear1 = nn.Linear(num_inputs + num_preferences, (num_inputs + num_preferences)*16)
         self.linear2a = nn.Linear((num_inputs + num_preferences)*16, (num_inputs + num_preferences)*32)
@@ -140,7 +140,7 @@ class DiscreteGaussianPolicy(nn.Module):
         return action, log_prob, action
 
     def to(self, device):
-        return super(DiscreteGaussianPolicy, self).to(device)
+        return super(ContinuousGaussianPolicy, self).to(device)
 
 
 class ContinuousSAC(object):
@@ -178,21 +178,21 @@ class ContinuousSAC(object):
 
         self.device = torch.device(device)
 
-        self.critic = Discrete_G_Network(self.num_inputs, self.n_preferences, self.action_dim, args.hidden_size).to(device)
+        self.critic = Continuous_G_Network(self.num_inputs, self.n_preferences, self.action_dim, args.hidden_size).to(device)
         self.critic_optim = Adam(self.critic.parameters())
 
-        self.critic_target = Discrete_G_Network(self.num_inputs, self.n_preferences, self.action_dim, args.hidden_size).to(device)
+        self.critic_target = Continuous_G_Network(self.num_inputs, self.n_preferences, self.action_dim, args.hidden_size).to(device)
 
         hard_update(self.critic_target, self.critic)
 
-        self.f_critic = Discrete_F_Network(self.num_inputs, self.n_preferences, self.action_dim, args.hidden_size).to(device)
+        self.f_critic = Continuous_F_Network(self.num_inputs, self.n_preferences, self.action_dim, args.hidden_size).to(device)
         self.f_optim = Adam(self.f_critic.parameters())
 
-        self.f_target = Discrete_F_Network(self.num_inputs, self.n_preferences, self.action_dim, args.hidden_size).to(device)
+        self.f_target = Continuous_F_Network(self.num_inputs, self.n_preferences, self.action_dim, args.hidden_size).to(device)
 
         hard_update(self.f_target, self.f_critic)
 
-        self.actor = DiscreteGaussianPolicy(self.num_inputs, self.n_preferences, self.action_dim, args.hidden_size).to(self.device)
+        self.actor = ContinuousGaussianPolicy(self.num_inputs, self.n_preferences, self.action_dim, args.hidden_size).to(self.device)
         self.actor_optim = Adam(self.actor.parameters())
 
         return None
