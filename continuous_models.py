@@ -139,8 +139,9 @@ class ContinuousGaussianPolicy(nn.Module):
         # Clamp action for mo-hopper-v4
 
         log_prob = m.log_prob(action)
+        prob = torch.exp(log_prob)
 
-        return action, log_prob, action
+        return action, prob, action
 
     def to(self, device):
         return super(ContinuousGaussianPolicy, self).to(device)
@@ -216,26 +217,16 @@ class ContinuousSAC(object):
 
         return action.detach().cpu().numpy()[0]
 
-    # Need to write this!
-    # def divergance(self, pi, prior):
-    #     if self.args.divergence == "alpha":
-    #         if (self.args.alpha != 1) and (self.args.alpha != 0):
-    #             alpha = self.args.alpha
-    #             t = (pi+1e-10)/(prior+1e-10)
-    #             return (t.pow(alpha) - alpha*t - (1-alpha))/(alpha*(alpha-1))
-    #         elif self.args.alpha == 1:
-    #             return pi*torch.log((pi+1e-10)/(prior+1e-10))
-    #         elif self.args.alpha == 0:
-    #             return -torch.log((pi+1e-10)/(prior+1e-10))
-       
-    #     elif self.args.divergence == "variational_distance":
-    #         return 0.5*torch.abs((pi+1e-10)/(prior+1e-10)-1)
-       
-    #     elif self.args.divergence == "Jensen-Shannon":
-    #         t = (pi+1e-10)/(prior+1e-10)
-    #         return -(t+1)*torch.log((t+1)/(2))+t*torch.log(t)
-    #     else:
-    #         pass
+    def divergance(self, pi, prior):
+        if self.args.divergence == "alpha":
+            if (self.args.alpha != 1) and (self.args.alpha != 0):
+                alpha = self.args.alpha
+                t = (pi+1e-10)/(prior+1e-10)
+                return t.pow(alpha-1)
+            elif self.args.alpha == 1:
+                return torch.log((pi+1e-10)/(prior+1e-10))
+            elif self.args.alpha == 0:
+                return -torch.log((pi+1e-10)/(prior+1e-10))
 
     def update_parameters(self, memory, batch_size, updates):
         # Sample a batch from memory
@@ -276,19 +267,14 @@ class ContinuousSAC(object):
         torch.nn.utils.clip_grad_norm_(self.critic.parameters(), 1)
         self.critic_optim.step()
 
-        action, log_pi, _ = self.actor.sample(state_batch, preference_batch)
+        action, pi, _ = self.actor.sample(state_batch, preference_batch)
 
         G1_action0, G2_action0 = self.critic_target(state_batch, preference_batch, action)
         G_action0 = torch.min(G1_action0, G2_action0)
 
-        policy_loss = log_pi - G_action0
+        policy_loss = self.divergence(pi, G_action0)
         policy_loss = policy_loss.mean()
         policy_loss.clamp(-1, 1)
-        
-        # prior = torch.softmax(G_action0, dim=1)
-        # divergance_loss = self.divergance(pi, prior.detach())
-        # divergance_loss = torch.sum(divergance_loss, dim=1).reshape(-1,1)
-        # policy_loss = divergance_loss.mean()
 
         # Actor backwards step
         self.actor_optim.zero_grad()
