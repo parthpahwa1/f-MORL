@@ -425,7 +425,7 @@ def continuous_train(agent, env, memory, writer, args):
     else:
         lower_bound = 0
 
-    for i_episode in tqdm(range(lower_bound, args.num_episodes)):
+    for i_episode in range(lower_bound, args.num_episodes):
         episode_reward = 0
         episode_steps = 0
 
