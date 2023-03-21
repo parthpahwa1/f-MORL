@@ -116,24 +116,26 @@ class ContinuousGaussianPolicy(nn.Module):
         x = F.relu(self.linear4a(x))
         x = F.relu(self.linear4b(x))
         x = F.relu(self.linear4c(x))
-        std = F.hardtanh(self.std_linear(x), 1e-3, 1)
+        log_std = F.hardtanh(self.std_linear(x), -20, 2)
 
-        return mean, std
+        return mean, log_std
 
     def sample(self, state, preference):
-        mean, std = self.forward(state, preference)
+        mean, log_std = self.forward(state, preference)
+
+        std = log_std.exp()
 
         # Add std for distribution init
         m = torch.distributions.Normal(loc=mean, scale=std)
         
-        action = m.sample()
+        x_t = m.rsample()
+        action = torch.tanh(x_t)
 
-        log_prob = m.log_prob(action)
-        prob = torch.exp(log_prob)
+        log_prob = m.log_prob(x_t)
+        log_prob -= torch.log(1 * (1 - action.pow(2)) + 1e-6)
         
-        # Clamp action for mo-hopper-v4 and mo-cheetah
-        action = action.clamp(-1,1)
-
+        prob = log_prob.exp()
+        
         return action, prob
 
     def to(self, device):
@@ -219,9 +221,9 @@ class ContinuousSAC(object):
             elif self.args.alpha == 1:
                 return torch.log((pi+1e-10)) - (prior+1e-10)
             elif self.args.alpha == 0:
-                return -torch.log((pi+1e-10)/(prior+1e-10))
+                return -prior*torch.log((pi+1e-10)/(prior+1e-10))
         else:
-            raise TypeError("Divergence not recognised")
+            raise TypeError("Divergence not recognised.")
 
     def update_parameters(self, memory, batch_size, updates):
         # Sample a batch from memory
@@ -271,7 +273,7 @@ class ContinuousSAC(object):
         policy_loss = policy_loss.mean()
 
         # clamp policy loss
-        policy_loss = policy_loss.clamp(-1, 1)
+        policy_loss = policy_loss.clamp(-100, 100)
 
         # Actor backwards step
         self.actor_optim.zero_grad()
@@ -301,13 +303,13 @@ class ContinuousSAC(object):
         if not os.path.exists('checkpoints/'):
             os.makedirs('checkpoints/')
         
-        if not os.path.exists(f'checkpoints/{env_name}'):
-            os.makedirs(f'checkpoints/{env_name}')
+        if not os.path.exists(f"checkpoints/{env_name.replace('-', '_')}"):
+            os.makedirs(f"checkpoints/{env_name.replace('-', '_')}")
             
         if ckpt_path is None:
-            ckpt_path = "checkpoints/{}/{}_{}".format(env_name, env_name, suffix)
+            ckpt_path = "checkpoints/{}/{}_{}".format(env_name.replace('-', '_'), env_name.replace('-', '_'), suffix)
         else:
-            ckpt_path = f"checkpoints/{env_name}/" + ckpt_path
+            ckpt_path = f"checkpoints/{env_name.replace('-', '_')}/" + ckpt_path
         
         print('Saving models to {}'.format(ckpt_path))
 
