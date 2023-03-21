@@ -475,7 +475,7 @@ def continuous_train(agent, env, memory, writer, args):
 
         writer.add_scalar('reward/train', episode_reward, i_episode)
 
-        if (i_episode % 100 == 0) and (i_episode != 0):
+        if (i_episode % 1000 == 0) and (i_episode != 0):
             # Mark start of evaluation.
             print("Starting Evaluation")
             tock = time.perf_counter()

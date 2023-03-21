@@ -84,7 +84,7 @@ class Continuous_G_Network(nn.Module):
 class ContinuousGaussianPolicy(nn.Module):
     def __init__(self, num_inputs, num_preferences, action_dim, hidden_dim):
         super(ContinuousGaussianPolicy, self).__init__()
-        
+
         self.linear1 = nn.Linear(num_inputs + num_preferences, (num_inputs + num_preferences)*16)
         self.linear2a = nn.Linear((num_inputs + num_preferences)*16, (num_inputs + num_preferences)*32)
         self.linear2b = nn.Linear((num_inputs + num_preferences)*32, (num_inputs + num_preferences)*64)
@@ -109,22 +109,14 @@ class ContinuousGaussianPolicy(nn.Module):
         x = F.relu(self.linear2a(x))
         x = F.relu(self.linear2b(x))
         x = F.relu(self.linear2c(x))
-        mean = self.mean_linear(x)
+        mean = F.hardtanh(self.mean_linear(x), -1, 1)
 
         # Standard deviation forward
         x = F.relu(self.linear3(input))
         x = F.relu(self.linear4a(x))
         x = F.relu(self.linear4b(x))
         x = F.relu(self.linear4c(x))
-
-        std = []
-        for item in self.std_linear(x)[0]:
-            if item >= 0:
-                std.append(item)
-            else:
-                std.append(-item)
-        
-        std = torch.FloatTensor(std).reshape(-1)
+        std = F.sigmoid(self.std_linear(x))
 
         return mean, std
 
@@ -135,13 +127,14 @@ class ContinuousGaussianPolicy(nn.Module):
         m = torch.distributions.Normal(loc=mean, scale=std)
         
         action = m.sample()
-        
-        # Clamp action for mo-hopper-v4
 
         log_prob = m.log_prob(action)
         prob = torch.exp(log_prob)
+        
+        # Clamp action for mo-hopper-v4 and mo-cheetah
+        action = action.clamp(-1,1)
 
-        return action, prob, action
+        return action, prob
 
     def to(self, device):
         return super(ContinuousGaussianPolicy, self).to(device)
@@ -205,7 +198,7 @@ class ContinuousSAC(object):
         state = torch.Tensor(state).to(self.device).unsqueeze(0)
         preference = torch.FloatTensor(preference).to(self.device).unsqueeze(0)
 
-        action, _, _ = self.actor.sample(state, preference)
+        action, _ = self.actor.sample(state, preference)
 
         return action.detach().cpu().numpy()[0]
     
@@ -213,7 +206,7 @@ class ContinuousSAC(object):
         state = torch.Tensor(state).to(self.device).unsqueeze(0)
         preference = torch.FloatTensor(preference).to(self.device).unsqueeze(0)
 
-        _, _, action = self.actor.sample(state, preference)
+        action, _ = self.actor.sample(state, preference)
 
         return action.detach().cpu().numpy()[0]
 
@@ -269,7 +262,7 @@ class ContinuousSAC(object):
         torch.nn.utils.clip_grad_norm_(self.critic.parameters(), 1)
         self.critic_optim.step()
 
-        action, pi, _ = self.actor.sample(state_batch, preference_batch)
+        action, pi = self.actor.sample(state_batch, preference_batch)
 
         G1_action0, G2_action0 = self.critic_target(state_batch, preference_batch, action)
         G_action0 = torch.min(G1_action0, G2_action0)
