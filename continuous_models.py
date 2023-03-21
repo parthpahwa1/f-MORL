@@ -116,7 +116,7 @@ class ContinuousGaussianPolicy(nn.Module):
         x = F.relu(self.linear4a(x))
         x = F.relu(self.linear4b(x))
         x = F.relu(self.linear4c(x))
-        std = F.sigmoid(self.std_linear(x))
+        std = F.hardtanh(self.std_linear(x), 1e-3, 1)
 
         return mean, std
 
@@ -217,7 +217,7 @@ class ContinuousSAC(object):
                 t = (pi+1e-10)/(prior+1e-10)
                 return t.pow(alpha-1)
             elif self.args.alpha == 1:
-                return torch.log((pi+1e-10)/(prior+1e-10))
+                return torch.log((pi+1e-10)) - (prior+1e-10)
             elif self.args.alpha == 0:
                 return -torch.log((pi+1e-10)/(prior+1e-10))
         else:
@@ -269,7 +269,9 @@ class ContinuousSAC(object):
 
         policy_loss = self.divergence(pi, G_action0)
         policy_loss = policy_loss.mean()
-        policy_loss.clamp(-1, 1)
+
+        # clamp policy loss
+        policy_loss = policy_loss.clamp(-1, 1)
 
         # Actor backwards step
         self.actor_optim.zero_grad()

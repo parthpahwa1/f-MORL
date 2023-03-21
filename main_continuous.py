@@ -121,7 +121,7 @@ if __name__ == "__main__":
         
         func = partial(multi_train, args)
 
-        func(alpha=1)
+        func(alpha=2)
 
         # cpu_count = multiprocessing.cpu_count()
         # alphas = [i/5 for i in range(0,11)]
