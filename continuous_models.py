@@ -227,6 +227,8 @@ class ContinuousSAC(object):
                 return torch.log((pi+1e-10)/(prior+1e-10))
             elif self.args.alpha == 0:
                 return -torch.log((pi+1e-10)/(prior+1e-10))
+        else:
+            raise TypeError("Divergence not recognised")
 
     def update_parameters(self, memory, batch_size, updates):
         # Sample a batch from memory

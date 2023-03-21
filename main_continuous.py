@@ -5,6 +5,10 @@ from utils import *
 from continuous_models import *
 from replay_memory import *
 import mo_gymnasium
+import multiprocessing
+from multiprocessing import Pool
+from functools import partial
+import copy
 
 import torch
 from torch import nn 
@@ -48,13 +52,14 @@ parser.add_argument('--evaluate', action="store_true",
 
 parser.add_argument('--divergence', type=str, default='alpha',
                     help="Type of divergence constraint")
+
 parser.add_argument('--alpha', type=float, default=1.0, metavar='G',
                     help='alpha divergence constant (default: 1.0)')
 
 args = parser.parse_args()
 
 # Assertions
-assert args.divergence in {"alpha", "variational_distance", "Jensen-Shannon"}
+assert args.divergence in {"alpha"}
 assert args.env_name in {"mo-hopper-v4", "mo-halfcheetah-v4"}
 
 if  torch.cuda.is_available():
@@ -70,15 +75,41 @@ else:
     ByteTensor = torch.ByteTensor 
     Tensor = FloatTensor
 
+def multi_train(args_input, alpha):
+    args_copy = copy.deepcopy(args_input) 
+    # If set cost_objective=False set argsnum_preferences = 2, else set args.num_preferences=3
+    env = mo_gymnasium.make(args_copy.env_name, cost_objective=False)
+    env.reset()
+    args_copy.alpha = alpha
+    
+    agent = ContinuousSAC(args_copy.num_inputs, args_copy)
+
+    i_max = 0
+    for i in range(0,60):
+        if os.path.exists(f"checkpoints/{args_copy.env_name}/{args_copy.env_name}_{args_copy.divergence}_{args_copy.alpha}_{i*50}"):
+            i_max = i*50
+        else:
+            pass
+
+    if i_max != 0:
+        agent.load_checkpoint(f"checkpoints/{args_copy.env_name}/{args_copy.env_name}_{args_copy.divergence}_{args_copy.alpha}_{i_max}")
+
+    if not args_copy.evaluate:
+        memory = ContinuousMemory(args_copy.replay_size,  args_copy.gamma, args_copy.seed)
+        writer = SummaryWriter(f'./tensorboard_logs/{args_copy.env_name.replace("-", "_")}/{datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")}_SAC_{args_copy.env_name}_{args_copy.divergence}_{args_copy.alpha}')
+        continuous_train(agent, env, memory, writer, args_copy)
+    else:
+        print(continuous_evaluate(agent, env, args_copy))
+    
+    return None
+
 if __name__ == "__main__":
 
     env = mo_gymnasium.make(args.env_name)
     env.reset()
 
     if args.env_name == "mo-hopper-v4":
-        # If set cost_objective=False set argsnum_preferences = 2, else set args.num_preferences=3
-        env = mo_gymnasium.make(args.env_name, cost_objective=False)
-        env.reset()
+
         args.action_dim = 3
         args.num_preferences = 2
         args.num_weights = 4
@@ -86,26 +117,15 @@ if __name__ == "__main__":
         args.num_inputs = env.observation_space.shape[0]
         args.ref_point = np.zeros(args.num_preferences)
         args.max_steps = 1000
+        
+        func = partial(multi_train, args)
 
-        agent = ContinuousSAC(args.num_inputs, args)
+        with Pool(multiprocessing.cpu_count()) as p:
+            p.map(func, [*[i/5 for i in range(0,11)]])
+        
+        with Pool(multiprocessing.cpu_count()) as p:
+            p.map(func, [*[-i/5 for i in range(1,11)]])
 
-        i_max = 0
-        for i in range(0,60):
-            if os.path.exists(f"checkpoints/{args.env_name}/{args.env_name}_{args.divergence}_{args.alpha}_{i*50}"):
-                i_max = i*50
-            else:
-                pass
-
-        if i_max != 0:
-            agent.load_checkpoint(f"checkpoints/{args.env_name}/{args.env_name}_{args.divergence}_{args.alpha}_{i_max}")
-
-        if not args.evaluate:
-            memory = ContinuousMemory(args.replay_size,  args.gamma, args.seed)
-            writer = SummaryWriter(f'./tensorboard_logs/{args.env_name.replace("-", "_")}/{datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")}_SAC_{args.env_name}_{args.divergence}_{args.alpha}')
-            continuous_train(agent, env, memory, writer, args)
-        else:
-            print(continuous_evaluate(agent, env, args))
-    
     elif args.env_name == "mo-halfcheetah-v4":
         args.action_dim = 6
         args.num_preferences = 2
@@ -115,24 +135,13 @@ if __name__ == "__main__":
         args.ref_point = np.zeros(args.num_preferences)
         args.max_steps = 1000
 
-        agent = ContinuousSAC(args.num_inputs, args)
+        func = partial(multi_train, args)
 
-        i_max = 0
-        for i in range(0,60):
-            if os.path.exists(f"checkpoints/{args.env_name}/{args.env_name}_{args.divergence}_{args.alpha}_{i*50}"):
-                i_max = i*50
-            else:
-                pass
-
-        if i_max != 0:
-            agent.load_checkpoint(f"checkpoints/{args.env_name}/{args.env_name}_{args.divergence}_{args.alpha}_{i_max}")
-
-        if not args.evaluate:
-            memory = ContinuousMemory(args.replay_size,  args.gamma, args.seed)
-            writer = SummaryWriter(f'./tensorboard_logs/{args.env_name.replace("-", "_")}/{datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")}_SAC_{args.env_name}_{args.divergence}_{args.alpha}')
-            continuous_train(agent, env, memory, writer, args)
-        else:
-            print(continuous_evaluate(agent, env, args))
+        with Pool(multiprocessing.cpu_count()) as p:
+            p.map(func, [*[i/5 for i in range(0,11)]])
+        
+        with Pool(multiprocessing.cpu_count()) as p:
+            p.map(func, [*[-i/5 for i in range(1,11)]])
 
     else:
         raise NameError(f"{args.env_name} is not an enviroment.")
