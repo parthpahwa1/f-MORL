@@ -99,7 +99,7 @@ if __name__ == "__main__":
 
         if not args.evaluate:
             memory = DiscreteMemory(args.replay_size,  args.gamma, args.seed)
-            writer = SummaryWriter(f'./FruitTree_v0/{datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")}_SAC_{args.env_name}_{args.divergence}_{args.alpha}')
+            writer = SummaryWriter(f'./tensorboard_logs/FruitTree_v0/{datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")}_SAC_{args.env_name}_{args.divergence}_{args.alpha}')
             discrete_train(agent, env, memory, writer, args)
         else:
             print(discrete_evaluate(agent, env, args))
@@ -126,7 +126,7 @@ if __name__ == "__main__":
 
         if not args.evaluate:
             memory = DiscreteMemory(args.replay_size,  args.gamma, args.seed)
-            writer = SummaryWriter(f'./LunarLander_v2/{datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")}_SAC_{args.env_name}_{args.divergence}_{args.alpha}')
+            writer = SummaryWriter(f'./tensorboard_logs/LunarLander_v2/{datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")}_SAC_{args.env_name}_{args.divergence}_{args.alpha}')
             discrete_train(agent, env, memory, writer, args)
         else:
             print(discrete_evaluate(agent, env, args))
@@ -153,7 +153,7 @@ if __name__ == "__main__":
 
         if not args.evaluate:
             memory = DiscreteMemory(args.replay_size,  args.gamma, args.seed)
-            writer = SummaryWriter(f'./DeepSeaTreasure_v0/{datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")}_SAC_{args.env_name}_{args.divergence}_{args.alpha}')
+            writer = SummaryWriter(f'./tensorboard_logs/DeepSeaTreasure_v0/{datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")}_SAC_{args.env_name}_{args.divergence}_{args.alpha}')
             discrete_train(agent, env, memory, writer, args)
         else:
             print(discrete_evaluate(agent, env, args))
@@ -180,7 +180,7 @@ if __name__ == "__main__":
 
         if not args.evaluate:
             memory = DiscreteMemory(args.replay_size,  args.gamma, args.seed)
-            writer = SummaryWriter(f'./Minecart_v0/{datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")}_SAC_{args.env_name}_{args.divergence}_{args.alpha}')
+            writer = SummaryWriter(f'./tensorboard_logs/Minecart_v0/{datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")}_SAC_{args.env_name}_{args.divergence}_{args.alpha}')
             discrete_train(agent, env, memory, writer, args)
         else:
             print(discrete_evaluate(agent, env, args))
@@ -207,9 +207,10 @@ if __name__ == "__main__":
 
         if not args.evaluate:
             memory = DiscreteMemory(args.replay_size,  args.gamma, args.seed)
-            writer = SummaryWriter(f'./MountainCar_v0/{datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")}_SAC_{args.env_name}_{args.divergence}_{args.alpha}')
+            writer = SummaryWriter(f'./tensorboard_logs/MountainCar_v0/{datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")}_SAC_{args.env_name}_{args.divergence}_{args.alpha}')
             discrete_train(agent, env, memory, writer, args)
         else:
+            args.ref_point = np.array([-199,-10,-10])
             print(discrete_evaluate(agent, env, args))
 
     elif args.env_name == "four-room-v0":
@@ -231,7 +232,7 @@ if __name__ == "__main__":
 
         if not args.evaluate:
             memory = DiscreteMemory(args.replay_size,  args.gamma, args.seed)
-            writer = SummaryWriter(f'./FourRoom_v0/{datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")}_SAC_{args.env_name}_{args.divergence}_{args.alpha}')
+            writer = SummaryWriter(f'./tensorboard_logs/FourRoom_v0/{datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")}_SAC_{args.env_name}_{args.divergence}_{args.alpha}')
             discrete_train(agent, env, memory, writer, args)
         else:
             print(discrete_evaluate(agent, env, args))
@@ -255,7 +256,7 @@ if __name__ == "__main__":
 
         if not args.evaluate:
             memory = DiscreteMemory(args.replay_size,  args.gamma, args.seed)
-            writer = SummaryWriter(f'./ResourceGathering_v0/{datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")}_SAC_{args.env_name}_{args.divergence}_{args.alpha}')
+            writer = SummaryWriter(f'./tensorboard_logs/ResourceGathering_v0/{datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")}_SAC_{args.env_name}_{args.divergence}_{args.alpha}')
             discrete_train(agent, env, memory, writer, args)
         else:
             print(discrete_evaluate(agent, env, args))
