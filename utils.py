@@ -166,7 +166,6 @@ def discrete_train(agent, env, memory, writer, args):
                     # writer.add_scalar('entropy_temprature/alpha', args.alpha, updates)
                     updates += 1
             
-            print(action)
             next_state, reward, done, truncated, info = env.step(action) # Step
             episode_steps += 1
             total_numsteps += 1
@@ -389,7 +388,7 @@ def discrete_evaluate(agent, env, args):
     if args.env_name == "minecart-v0":
         cnt1, cnt2 = find_in(reward_list, pareto_df, 0.0)
         act_precision = cnt1 / len(reward_list)
-        print(act_precision)
+      
         act_recall = cnt2 / len(pareto_df)
         act_f1 = 2 * act_precision * act_recall / (act_precision + act_recall)
     
@@ -511,35 +510,35 @@ def continuous_train(agent, env, memory, writer, args):
 
                     count += 1
 
-                reward_list = np.array(list(set([tuple(i) for i in reward_list])))
-                avg_reward = sum(eval_reward)/len(eval_reward)
+            reward_list = np.array(list(set([tuple(i) for i in reward_list])))
+            avg_reward = sum(eval_reward)/len(eval_reward)
 
-                # calculate hyper volume using discounted rewards at the end of episodes for each preference
-                hyper = hypervolume(args.ref_point, reward_list)
+            # calculate hyper volume using discounted rewards at the end of episodes for each preference
+            hyper = hypervolume(args.ref_point, reward_list)
 
-                writer.add_scalar('Test Average Reward', avg_reward, i_episode)
-                writer.add_scalar('Hypervolume', hyper, i_episode)
-                
-                # Mark end of evaluation
-                tick = time.perf_counter()
-                print(f"Evaluation completed in {round(tick-tock,2)}")
-                
-                print(
-                        "----------------------------------------"
+            writer.add_scalar('Test Average Reward', avg_reward, i_episode)
+            writer.add_scalar('Hypervolume', hyper, i_episode)
+            
+            # Mark end of evaluation
+            tick = time.perf_counter()
+            print(f"Evaluation completed in {round(tick-tock,2)}")
+            
+            print(
+                    "----------------------------------------"
+                    )
+
+            # , Value S0: {}, Value G0: {}, Value G1: {}
+            print(
+                "\nEpisode Count: {}; \nHypervolume {}; \nAvg. Reward: {}."
+                .format(i_episode, 
+                        hyper,
+                        round(avg_reward, 2), 
+                        # float(value_f0.detach().cpu().numpy()), 
+                        # float(value_g0.detach().cpu().numpy()),
+                        # float(value_g1.detach().cpu().numpy())
                         )
-
-                # , Value S0: {}, Value G0: {}, Value G1: {}
-                print(
-                    "\nEpisode Count: {}; \nHypervolume {}; \nAvg. Reward: {}."
-                    .format(i_episode, 
-                            hyper,
-                            round(avg_reward, 2), 
-                            # float(value_f0.detach().cpu().numpy()), 
-                            # float(value_g0.detach().cpu().numpy()),
-                            # float(value_g1.detach().cpu().numpy())
-                            )
-                        )
-                print("----------------------------------------")
+                    )
+            print("----------------------------------------")
 
             agent.save_checkpoint(args.env_name, ckpt_path=f"{args.env_name}_{args.divergence}_{args.alpha}_{i_episode}")
 

@@ -217,7 +217,7 @@ class ContinuousSAC(object):
 
         return action.detach().cpu().numpy()[0]
 
-    def divergance(self, pi, prior):
+    def divergence(self, pi, prior):
         if self.args.divergence == "alpha":
             if (self.args.alpha != 1) and (self.args.alpha != 0):
                 alpha = self.args.alpha
