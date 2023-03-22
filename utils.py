@@ -462,8 +462,8 @@ def continuous_train(agent, env, memory, writer, args):
             memory.push(state, pref, action, reward, next_state, pref, mask, agent) # Append transition to memory
 
             state = next_state
-
-        writer.add_scalar('reward/train', episode_reward, i_episode)
+        
+        writer.add_scalar('Episode Length', episode_steps, i_episode)
 
         if ((i_episode % 1000 == 0) and (i_episode != 0)):
             # Mark start of evaluation.
