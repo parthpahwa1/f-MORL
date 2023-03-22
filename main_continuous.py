@@ -62,7 +62,6 @@ args = parser.parse_args()
 # Assertions
 assert args.divergence in {"alpha"}
 assert args.env_name in {"mo-hopper-v4", "mo-halfcheetah-v4"}
-args.env_name = args.env_name.replace('-', '_')
 
 if  torch.cuda.is_available():
     device = torch.device("cuda")
@@ -112,7 +111,8 @@ if __name__ == "__main__":
 
         env = mo_gymnasium.make(args.env_name, cost_objective=False)
         env.reset()
-
+        
+        args.env_name = args.env_name.replace('-', '_')
         args.action_dim = 3
         args.num_preferences = 2
         args.num_weights = 4
@@ -147,6 +147,7 @@ if __name__ == "__main__":
         #         p.map(func, alphas[:cpu_count*(i+1)])
 
     elif args.env_name == "mo-halfcheetah-v4":
+
         args.action_dim = 6
         args.num_preferences = 2
         args.num_weights = 4

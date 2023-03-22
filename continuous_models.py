@@ -237,7 +237,7 @@ class ContinuousSAC(object):
                 t = (pi+1e-10)/(prior.exp()+1e-10)
                 return t.pow(alpha-1)
             elif self.args.alpha == 1:
-                return torch.log((pi+1e-10)) - (prior)
+                return torch.log(pi) - (prior)
             elif self.args.alpha == 0:
                 return -prior*torch.log((pi+1e-10)/(prior.exp()+1e-10))
         else:
@@ -275,8 +275,8 @@ class ContinuousSAC(object):
         G1, G2 = self.critic(state_batch, preference_batch, action_batch)
         
         # JQ = 𝔼(st,at)~D[0.5(Q1(st,at) - r(st,at) - γ(𝔼st+1~p[V(st+1)]))^2]
-        G1_loss = F.smooth_l1_loss(G1, next_G_value)  
-        G2_loss = F.smooth_l1_loss(G2, next_G_value)  
+        G1_loss = F.mse_loss(G1, next_G_value)  
+        G2_loss = F.mse_loss(G2, next_G_value)  
 
         G_loss = G1_loss + G2_loss
 
