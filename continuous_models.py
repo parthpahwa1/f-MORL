@@ -12,6 +12,19 @@ LOG_SIG_MAX = 2
 LOG_SIG_MIN = -20
 epsilon = 1e-6
 
+if  torch.cuda.is_available():
+    device = torch.device("cuda")
+    FloatTensor = torch.cuda.FloatTensor 
+    LongTensor = torch.cuda.LongTensor 
+    ByteTensor = torch.cuda.ByteTensor 
+    Tensor = FloatTensor
+else:
+    device = torch.device("cpu")
+    FloatTensor = torch.FloatTensor 
+    LongTensor = torch.LongTensor 
+    ByteTensor = torch.ByteTensor 
+    Tensor = FloatTensor
+
 def weights_init_(m):
     if isinstance(m, nn.Linear):
         torch.nn.init.xavier_uniform_(m.weight, gain=1)
@@ -22,21 +35,23 @@ class Continuous_F_Network(nn.Module):
     def __init__(self, num_inputs, num_preferences, action_dim, hidden_dim):
         super(Continuous_F_Network, self).__init__()
 
-        self.linear1 = nn.Linear(num_inputs + num_preferences, (num_inputs + num_preferences)*16)
-        self.linear2a = nn.Linear((num_inputs + num_preferences)*16, (num_inputs + num_preferences)*32)
-        self.linear2b = nn.Linear((num_inputs + num_preferences)*32, (num_inputs + num_preferences)*64)
-        self.linear2c = nn.Linear((num_inputs + num_preferences)*64, (num_inputs + num_preferences)*32)
-        self.mean_linear1 = nn.Linear((num_inputs + num_preferences)*32, 1)
+        self.batch_norm = nn.BatchNorm1d(num_inputs + num_preferences)
+        self.linear1 = nn.Linear(num_inputs + num_preferences, 1024)
+        self.linear2a = nn.Linear(1024, 1024)
+        self.linear2b = nn.Linear(1024, 1024)
+        self.linear2c = nn.Linear(1024, 1024)
+        self.mean_linear1 = nn.Linear(1024, 1)
 
         self.apply(weights_init_)
 
     def forward(self, state, preference):
         input = torch.cat([state, preference], 1)
-
+        input = self.batch_norm(input)
+        
         x = F.relu(self.linear1(input))
-        x = F.relu(self.linear2a(x))
-        x = F.relu(self.linear2b(x))
-        x = F.relu(self.linear2c(x))
+        x = F.relu(self.linear2a(x)) + x
+        x = F.relu(self.linear2b(x)) + x
+        x = F.relu(self.linear2c(x)) + x
         x = self.mean_linear1(x)
 
         return x
@@ -45,37 +60,38 @@ class Continuous_F_Network(nn.Module):
 class Continuous_G_Network(nn.Module):
     def __init__(self, num_inputs, num_preferences, action_dim, hidden_dim):
         super(Continuous_G_Network, self).__init__()
-        
+        self.batch_norm = nn.BatchNorm1d(num_inputs + num_preferences + action_dim)
         # Q1 architecture
-        self.linear1 = nn.Linear(num_inputs + num_preferences + action_dim, (num_inputs + num_preferences)*16)
-        self.linear2a = nn.Linear((num_inputs + num_preferences)*16, (num_inputs + num_preferences)*32)
-        self.linear2b = nn.Linear((num_inputs + num_preferences)*32, (num_inputs + num_preferences)*64)
-        self.linear2c = nn.Linear((num_inputs + num_preferences)*64, (num_inputs + num_preferences)*32)
-        self.mean_linear1 = nn.Linear((num_inputs + num_preferences)*32, 1)
+        self.linear1 = nn.Linear(num_inputs + num_preferences + action_dim, 1024)
+        self.linear2a = nn.Linear(1024, 1024)
+        self.linear2b = nn.Linear(1024, 1024)
+        self.linear2c = nn.Linear(1024, 1024)
+        self.mean_linear1 = nn.Linear(1024, 1)
 
         # Q2 architecture
-        self.linear3= nn.Linear(num_inputs + num_preferences + action_dim, (num_inputs + num_preferences)*16)
-        self.linear4a = nn.Linear((num_inputs + num_preferences)*16, (num_inputs + num_preferences)*32)
-        self.linear4b = nn.Linear((num_inputs + num_preferences)*32, (num_inputs + num_preferences)*64)
-        self.linear4c = nn.Linear((num_inputs + num_preferences)*64, (num_inputs + num_preferences)*32)
-        self.mean_linear2 = nn.Linear((num_inputs + num_preferences)*32, 1)
+        self.linear3= nn.Linear(num_inputs + num_preferences + action_dim, 1024)
+        self.linear4a = nn.Linear(1024, 1024)
+        self.linear4b = nn.Linear(1024, 1024)
+        self.linear4c = nn.Linear(1024, 1024)
+        self.mean_linear2 = nn.Linear(1024, 1)
 
         self.apply(weights_init_)
         return None
 
     def forward(self, state, preference, action):
         xu = torch.cat([state, preference, action], 1)
+        xu = self.batch_norm(xu)
         
-        x1 = F.relu(self.linear1(xu))
-        x1 = F.relu(self.linear2a(x1))
-        x1 = F.relu(self.linear2b(x1))
-        x1 = F.relu(self.linear2c(x1))
+        x1 = F.relu(self.linear1(xu)) 
+        x1 = F.relu(self.linear2a(x1)) +x1
+        x1 = F.relu(self.linear2b(x1)) +x1
+        x1 = F.relu(self.linear2c(x1)) +x1
         x1 = self.mean_linear1(x1)
         
         x2 = F.relu(self.linear3(xu))
-        x2 = F.relu(self.linear4a(x2))
-        x2 = F.relu(self.linear4b(x2))
-        x2 = F.relu(self.linear4c(x2))
+        x2 = F.relu(self.linear4a(x2)) +x2
+        x2 = F.relu(self.linear4b(x2)) +x2
+        x2 = F.relu(self.linear4c(x2)) +x2
         x2 = self.mean_linear2(x2)
 
         return x1, x2
@@ -84,18 +100,19 @@ class Continuous_G_Network(nn.Module):
 class ContinuousGaussianPolicy(nn.Module):
     def __init__(self, num_inputs, num_preferences, action_dim, hidden_dim):
         super(ContinuousGaussianPolicy, self).__init__()
+        
+        self.batch_norm = nn.BatchNorm1d(num_inputs + num_preferences)
+        self.linear1 = nn.Linear(num_inputs + num_preferences, 1024)
+        self.linear2a = nn.Linear(1024, 1024)
+        self.linear2b = nn.Linear(1024, 1024)
+        self.linear2c = nn.Linear(1024, 1024)
+        self.mean_linear = nn.Linear(1024, action_dim)
 
-        self.linear1 = nn.Linear(num_inputs + num_preferences, (num_inputs + num_preferences)*16)
-        self.linear2a = nn.Linear((num_inputs + num_preferences)*16, (num_inputs + num_preferences)*32)
-        self.linear2b = nn.Linear((num_inputs + num_preferences)*32, (num_inputs + num_preferences)*64)
-        self.linear2c = nn.Linear((num_inputs + num_preferences)*64, (num_inputs + num_preferences)*32)
-        self.mean_linear = nn.Linear((num_inputs + num_preferences)*32, action_dim)
-
-        self.linear3 = nn.Linear(num_inputs + num_preferences, (num_inputs + num_preferences)*16)
-        self.linear4a = nn.Linear((num_inputs + num_preferences)*16, (num_inputs + num_preferences)*32)
-        self.linear4b = nn.Linear((num_inputs + num_preferences)*32, (num_inputs + num_preferences)*64)
-        self.linear4c = nn.Linear((num_inputs + num_preferences)*64, (num_inputs + num_preferences)*32)
-        self.std_linear = nn.Linear((num_inputs + num_preferences)*32, action_dim)
+        self.linear3 = nn.Linear(num_inputs + num_preferences, 1024)
+        self.linear4a = nn.Linear(1024, 1024)
+        self.linear4b = nn.Linear(1024, 1024)
+        self.linear4c = nn.Linear(1024, 1024)
+        self.std_linear = nn.Linear(1024, action_dim)
 
         self.apply(weights_init_)
 
@@ -103,24 +120,25 @@ class ContinuousGaussianPolicy(nn.Module):
 
     def forward(self, state, preference):
         input = torch.cat([state, preference], 1)
-
+        input = self.batch_norm(input)
         # Mean network forward
         x = F.relu(self.linear1(input))
-        x = F.relu(self.linear2a(x))
-        x = F.relu(self.linear2b(x))
-        x = F.relu(self.linear2c(x))
+        x = F.relu(self.linear2a(x)) +x
+        x = F.relu(self.linear2b(x)) +x
+        x = F.relu(self.linear2c(x)) +x
         mean = F.hardtanh(self.mean_linear(x), -1, 1)
 
         # Standard deviation forward
         x = F.relu(self.linear3(input))
-        x = F.relu(self.linear4a(x))
-        x = F.relu(self.linear4b(x))
-        x = F.relu(self.linear4c(x))
+        x = F.relu(self.linear4a(x)) +x
+        x = F.relu(self.linear4b(x)) +x
+        x = F.relu(self.linear4c(x)) +x
         log_std = F.hardtanh(self.std_linear(x), -20, 2)
 
         return mean, log_std
 
     def sample(self, state, preference):
+        self.eval()
         mean, log_std = self.forward(state, preference)
 
         std = log_std.exp()
@@ -167,13 +185,13 @@ class ContinuousSAC(object):
 
         self.i_episode = 0
         
-        device = ""
-        if args.cuda:
-            device = "cuda"
-        elif args.mps:
-            device = "mps"
-        else:
-            device = "cpu"
+        # device = ""
+        # if args.cuda:
+        #     device = "cuda"
+        # elif args.mps:
+        #     device = "mps"
+        # else:
+        #     device = "cpu"
 
         self.device = torch.device(device)
 
@@ -197,16 +215,16 @@ class ContinuousSAC(object):
         return None
     
     def select_action(self, state, preference):
-        state = torch.Tensor(state).to(self.device).unsqueeze(0)
-        preference = torch.FloatTensor(preference).to(self.device).unsqueeze(0)
+        state = FloatTensor(state).to(self.device).unsqueeze(0)
+        preference = FloatTensor(preference).to(self.device).unsqueeze(0)
 
         action, _ = self.actor.sample(state, preference)
 
         return action.detach().cpu().numpy()[0]
     
     def act(self, state, preference):
-        state = torch.Tensor(state).to(self.device).unsqueeze(0)
-        preference = torch.FloatTensor(preference).to(self.device).unsqueeze(0)
+        state = FloatTensor(state).to(self.device).unsqueeze(0)
+        preference = FloatTensor(preference).to(self.device).unsqueeze(0)
 
         action, _ = self.actor.sample(state, preference)
 
@@ -227,19 +245,23 @@ class ContinuousSAC(object):
 
     def update_parameters(self, memory, batch_size, updates):
         # Sample a batch from memory
+        self.actor.train()
+        self.f_critic.train()
+        self.critic.train()
+
         state_batch, preference_batch, action_batch, reward_batch, next_state_batch, next_preference_batch, mask_batch = memory.sample(batch_size=batch_size)
 
-        state_batch = torch.FloatTensor(state_batch).repeat(self.n_weights,1).to(self.device)
-        next_state_batch = torch.FloatTensor(next_state_batch).repeat(self.n_weights,1).to(self.device)
-        action_batch = torch.LongTensor(action_batch).repeat(self.n_weights,1).to(self.device)
-        reward_batch = torch.FloatTensor(reward_batch).repeat(self.n_weights,1).to(self.device)
-        mask_batch = torch.FloatTensor(mask_batch).repeat(self.n_weights).to(self.device).unsqueeze(1)
+        state_batch = FloatTensor(state_batch).repeat(self.n_weights,1).to(self.device)
+        next_state_batch = FloatTensor(next_state_batch).repeat(self.n_weights,1).to(self.device)
+        action_batch = LongTensor(action_batch).repeat(self.n_weights,1).to(self.device)
+        reward_batch = FloatTensor(reward_batch).repeat(self.n_weights,1).to(self.device)
+        mask_batch = FloatTensor(mask_batch).repeat(self.n_weights).to(self.device).unsqueeze(1)
 
-        preference_batch = torch.FloatTensor(preference_batch).to(self.device)
-        next_preference_batch = torch.FloatTensor(next_preference_batch).to(self.device)
+        preference_batch = FloatTensor(preference_batch).to(self.device)
+        next_preference_batch = FloatTensor(next_preference_batch).to(self.device)
         
         pref = self.rng.rand(preference_batch.shape[0]*(self.n_weights-1), self.args.num_preferences)
-        pref = torch.FloatTensor(pref/np.sum(pref))
+        pref = FloatTensor(pref/np.sum(pref))
 
         preference_batch = torch.cat((preference_batch, pref), dim=0)
         next_preference_batch = torch.cat((next_preference_batch, pref), dim=0)

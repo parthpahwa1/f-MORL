@@ -9,6 +9,7 @@ import multiprocessing
 from multiprocessing import Pool
 from functools import partial
 import copy
+from tqdm import tqdm
 
 import torch
 from torch import nn 
@@ -18,17 +19,17 @@ from torch.utils.tensorboard import SummaryWriter
 parser = argparse.ArgumentParser(description='PyTorch Soft Actor-Critic Args')
 parser.add_argument('--env_name', default="mo-hopper-v4",
                     help='MOGYM enviroment (default: mo-hopper-v4)')
-parser.add_argument('--gamma', type=float, default=0.99, metavar='G',
+parser.add_argument('--gamma', type=float, default=0.995, metavar='G',
                     help='discount factor for reward (default: 0.99)')
-parser.add_argument('--tau', type=float, default=0.01, metavar='G',
+parser.add_argument('--tau', type=float, default=0.005, metavar='G',
                     help='target smoothing coefficient(τ) (default: 0.01)')
 parser.add_argument('--lr', type=float, default=1e-4, metavar='G',
                     help='learning rate (default: 1e-4)')
 parser.add_argument('--seed', type=int, default=123, metavar='N',
                     help='random seed (default: 123)')
-parser.add_argument('--batch_size', type=int, default=128, metavar='N',
+parser.add_argument('--batch_size', type=int, default=256, metavar='N',
                     help='batch size (default: 128)')
-parser.add_argument('--num_steps', type=int, default=int(1.5e7), metavar='N',
+parser.add_argument('--num_steps', type=int, default=int(1.5e8), metavar='N',
                     help='maximum number of steps (default: 1.5e6)')
 parser.add_argument('--num_episodes', type=int, default=10000, metavar='N',
                     help='maximum number of episodes (default: 3000)')
@@ -40,7 +41,7 @@ parser.add_argument('--start_steps', type=int, default=10000, metavar='N',
                     help='Steps sampling random actions (default: 10000)')
 parser.add_argument('--target_update_interval', type=int, default= 1, metavar='N',
                     help='Value target update per no. of updates per step (default: 1)')
-parser.add_argument('--replay_size', type=int, default=50000, metavar='N',
+parser.add_argument('--replay_size', type=int, default=200000, metavar='N',
                     help='size of replay buffer (default: 10000)')
 parser.add_argument('--cuda', action="store_true",
                     help='run on CUDA (default: False)')
@@ -63,13 +64,13 @@ assert args.divergence in {"alpha"}
 assert args.env_name in {"mo-hopper-v4", "mo-halfcheetah-v4"}
 
 if  torch.cuda.is_available():
-    if args.cuda:
-        device = torch.device("cuda")
-        FloatTensor = torch.cuda.FloatTensor 
-        LongTensor = torch.cuda.LongTensor 
-        ByteTensor = torch.cuda.ByteTensor 
-        Tensor = FloatTensor
+    device = torch.device("cuda")
+    FloatTensor = torch.cuda.FloatTensor 
+    LongTensor = torch.cuda.LongTensor 
+    ByteTensor = torch.cuda.ByteTensor 
+    Tensor = FloatTensor
 else:
+    device = torch.device("cpu")
     FloatTensor = torch.FloatTensor 
     LongTensor = torch.LongTensor 
     ByteTensor = torch.ByteTensor 
@@ -153,13 +154,14 @@ if __name__ == "__main__":
         args.ref_point = np.zeros(args.num_preferences)
         args.max_steps = 1000
 
-        func = partial(multi_train, args)
+        multi_train(args, 1)
+        # func = partial(multi_train, args)
 
-        with Pool(multiprocessing.cpu_count()) as p:
-            p.map(func, [*[i/5 for i in range(0,11)]])
+        # with Pool(multiprocessing.cpu_count()) as p:
+        #     p.map(func, [*[i/5 for i in range(0,11)]])
         
-        with Pool(multiprocessing.cpu_count()) as p:
-            p.map(func, [*[-i/5 for i in range(1,11)]])
+        # with Pool(multiprocessing.cpu_count()) as p:
+        #     p.map(func, [*[-i/5 for i in range(1,11)]])
 
     else:
         raise NameError(f"{args.env_name} is not an enviroment.")

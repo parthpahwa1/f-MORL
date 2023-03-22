@@ -4,6 +4,21 @@ import pickle
 import os
 import torch
 
+
+if  torch.cuda.is_available():
+    device = torch.device("cuda")
+    FloatTensor = torch.cuda.FloatTensor 
+    LongTensor = torch.cuda.LongTensor 
+    ByteTensor = torch.cuda.ByteTensor 
+    Tensor = FloatTensor
+else:
+    device = torch.device("cpu")
+    FloatTensor = torch.FloatTensor 
+    LongTensor = torch.LongTensor 
+    ByteTensor = torch.ByteTensor 
+    Tensor = FloatTensor
+
+
 class DiscreteMemory:
     def __init__(self, capacity, gamma, seed):
         random.seed(seed)
@@ -20,15 +35,17 @@ class DiscreteMemory:
 
         self.buffer[self.position] = (state, preference, action, reward, next_state, next_preference, done)
         
-        Q_val_0, Q_val_1 = agent.critic_target(torch.FloatTensor(state.reshape(1,-1)), preference.reshape(1,-1))
+        agent.critic_target.eval()
+        Q_val_0, Q_val_1 = agent.critic_target(FloatTensor(state.reshape(1,-1)), preference.reshape(1,-1))
         Q_val = torch.min(Q_val_0, Q_val_1)[0]
         Q_val = Q_val[action]
 
-        hq_0, hq_1 = agent.critic_target(torch.FloatTensor(next_state.reshape(1,-1)), next_preference.reshape(1,-1))
+        agent.critic_target.eval()
+        hq_0, hq_1 = agent.critic_target(FloatTensor(next_state.reshape(1,-1)), next_preference.reshape(1,-1))
         hq = torch.min(hq_0, hq_1)
         hq = torch.max(hq)
 
-        wr = preference.dot(torch.FloatTensor(reward))
+        wr = preference.dot(FloatTensor(reward))
         p = abs(wr + done*self.gamma * hq - Q_val)
 
         self.priority_mem[self.position] = p.detach().cpu().numpy()
@@ -87,11 +104,13 @@ class ContinuousMemory:
 
         self.buffer[self.position] = (state, preference, action, reward, next_state, next_preference, done)
 
-        Q_val_0, Q_val_1 = agent.critic_target(state.unsqueeze(0), preference.unsqueeze(0), action.unsqueeze(0))
+        agent.critic_target.eval()
+        Q_val_0, Q_val_1 = agent.critic_target(FloatTensor(state).unsqueeze(0), FloatTensor(preference).unsqueeze(0), FloatTensor(action).unsqueeze(0))
         
         Q_val = torch.min(Q_val_0, Q_val_1)
 
-        hq_0, hq_1 = agent.critic_target(state.unsqueeze(0), preference.unsqueeze(0), action.unsqueeze(0))
+        agent.critic_target.eval()
+        hq_0, hq_1 = agent.critic_target(FloatTensor(state).unsqueeze(0), FloatTensor(preference).unsqueeze(0), FloatTensor(action).unsqueeze(0))
         hq = torch.min(hq_0, hq_1)
         hq = torch.max(hq)
 

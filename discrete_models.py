@@ -12,6 +12,20 @@ LOG_SIG_MAX = 2
 LOG_SIG_MIN = -20
 epsilon = 1e-6
 
+if  torch.cuda.is_available():
+    device = torch.device("cuda")
+    FloatTensor = torch.cuda.FloatTensor 
+    LongTensor = torch.cuda.LongTensor 
+    ByteTensor = torch.cuda.ByteTensor 
+    Tensor = FloatTensor
+else:
+    device = torch.device("cpu")
+    FloatTensor = torch.FloatTensor 
+    LongTensor = torch.LongTensor 
+    ByteTensor = torch.ByteTensor 
+    Tensor = FloatTensor
+
+
 def weights_init_(m):
     if isinstance(m, nn.Linear):
         torch.nn.init.xavier_uniform_(m.weight, gain=1)
@@ -180,16 +194,16 @@ class DiscreteSAC(object):
         return None
     
     def select_action(self, state, preference):
-        state = torch.Tensor(state).to(self.device).unsqueeze(0)
-        preference = torch.FloatTensor(preference).to(self.device).unsqueeze(0)
+        state = Tensor(state).to(self.device).unsqueeze(0)
+        preference = FloatTensor(preference).to(self.device).unsqueeze(0)
 
         action, _, _ = self.actor.sample(state, preference)
 
         return action.detach().cpu().numpy()[0]
     
     def act(self, state, preference):
-        state = torch.Tensor(state).to(self.device).unsqueeze(0)
-        preference = torch.FloatTensor(preference).to(self.device).unsqueeze(0)
+        state = Tensor(state).to(self.device).unsqueeze(0)
+        preference = FloatTensor(preference).to(self.device).unsqueeze(0)
 
         _, _, action = self.actor.sample(state, preference)
 
@@ -219,17 +233,17 @@ class DiscreteSAC(object):
         # Sample a batch from memory
         state_batch, preference_batch, action_batch, reward_batch, next_state_batch, next_preference_batch, mask_batch = memory.sample(batch_size=batch_size)
 
-        state_batch = torch.FloatTensor(state_batch).repeat(self.n_weights,1).to(self.device)
-        next_state_batch = torch.FloatTensor(next_state_batch).repeat(self.n_weights,1).to(self.device)
-        action_batch = torch.LongTensor(action_batch).repeat(self.n_weights,1).to(self.device).reshape(-1, 1)
-        reward_batch = torch.FloatTensor(reward_batch).repeat(self.n_weights,1).to(self.device)
-        mask_batch = torch.FloatTensor(mask_batch).repeat(self.n_weights).to(self.device).unsqueeze(1)
+        state_batch = FloatTensor(state_batch).repeat(self.n_weights,1).to(self.device)
+        next_state_batch = FloatTensor(next_state_batch).repeat(self.n_weights,1).to(self.device)
+        action_batch = LongTensor(action_batch).repeat(self.n_weights,1).to(self.device).reshape(-1, 1)
+        reward_batch = FloatTensor(reward_batch).repeat(self.n_weights,1).to(self.device)
+        mask_batch = FloatTensor(mask_batch).repeat(self.n_weights).to(self.device).unsqueeze(1)
 
-        preference_batch = torch.FloatTensor(preference_batch).to(self.device)
-        next_preference_batch = torch.FloatTensor(next_preference_batch).to(self.device)
+        preference_batch = FloatTensor(preference_batch).to(self.device)
+        next_preference_batch = FloatTensor(next_preference_batch).to(self.device)
         
         pref = self.rng.rand(preference_batch.shape[0]*(self.n_weights-1), self.args.num_preferences)
-        pref = torch.FloatTensor(pref/np.sum(pref))
+        pref = FloatTensor(pref/np.sum(pref))
 
         preference_batch = torch.cat((preference_batch, pref), dim=0)
         next_preference_batch = torch.cat((next_preference_batch, pref), dim=0)

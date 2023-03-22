@@ -16,6 +16,7 @@ if  torch.cuda.is_available():
     ByteTensor = torch.cuda.ByteTensor 
     Tensor = FloatTensor
 else:
+    device = torch.device("cpu")
     FloatTensor = torch.FloatTensor 
     LongTensor = torch.LongTensor 
     ByteTensor = torch.ByteTensor 
@@ -112,7 +113,7 @@ def discrete_train(agent, env, memory, writer, args):
     rng = np.random.RandomState(args.seed)
     pref_list = rng.rand(2000, args.num_preferences)
     pref_list = pref_list/np.sum(pref_list, axis=1)[:, None]
-    pref_list = torch.FloatTensor(pref_list)
+    pref_list = FloatTensor(pref_list)
     
 
     if args.env_name == "minecart-v0":
@@ -141,10 +142,10 @@ def discrete_train(agent, env, memory, writer, args):
 
         if i_episode % 2 == 0:
             pref = rng.dirichlet(np.ones(args.num_preferences))
-            pref = torch.FloatTensor(pref)
+            pref = FloatTensor(pref)
         else:
             pref = rng.rand(args.num_preferences)
-            pref = torch.FloatTensor(pref/np.sum(pref))
+            pref = FloatTensor(pref/np.sum(pref))
 
         while not done and episode_steps < max_steps:
             action = agent.select_action(state, pref)  # Sample action from policy
@@ -200,11 +201,7 @@ def discrete_train(agent, env, memory, writer, args):
                     state, _ = env.reset()
                     eval_pref = eval_pref.clone().detach().cpu()
                     temp_pref = eval_pref.numpy()
-                    # value_f0 = agent.f_critic(torch.FloatTensor(state.reshape(1,-1)), eval_pref.reshape(1,-1))
-                    # value_g0 = agent.critic_target(torch.FloatTensor(state.reshape(1,-1)), eval_pref.reshape(1,-1), torch.FloatTensor(np.array([[0.0]])))[0]
-                    # value_g1 = agent.critic_target(torch.FloatTensor(state.reshape(1,-1)), eval_pref.reshape(1,-1), torch.FloatTensor(np.array([[1.0]])))[0]
-                    # value_g2 = agent.critic_target(torch.FloatTensor(state.reshape(1,-1)), eval_pref.reshape(1,-1), torch.FloatTensor(np.array([[2.0]])))[0]
-                    # value_g3 = agent.critic_target(torch.FloatTensor(state.reshape(1,-1)), eval_pref.reshape(1,-1), torch.FloatTensor(np.array([[3.0]])))[0]
+
                     done = False
 
                     temp_reward = np.zeros(args.num_preferences)
@@ -309,7 +306,7 @@ def discrete_evaluate(agent, env, args):
     rng = np.random.RandomState(args.seed)
     pref_list = rng.rand(2000, args.num_preferences)
     pref_list = pref_list/np.sum(pref_list, axis=1)[:, None]
-    pref_list = torch.FloatTensor(pref_list)
+    pref_list = FloatTensor(pref_list)
 
     if args.env_name == "minecart-v0":
         pareto_df = pd.read_csv("minecart_pareto.csv")
@@ -327,11 +324,7 @@ def discrete_evaluate(agent, env, args):
         state, _ = env.reset()
         eval_pref = eval_pref.clone().detach().cpu()
         temp_pref = eval_pref.numpy()
-        # value_f0 = agent.f_critic(torch.FloatTensor(state.reshape(1,-1)), eval_pref.reshape(1,-1))
-        # value_g0 = agent.critic_target(torch.FloatTensor(state.reshape(1,-1)), eval_pref.reshape(1,-1), torch.FloatTensor(np.array([[0.0]])))[0]
-        # value_g1 = agent.critic_target(torch.FloatTensor(state.reshape(1,-1)), eval_pref.reshape(1,-1), torch.FloatTensor(np.array([[1.0]])))[0]
-        # value_g2 = agent.critic_target(torch.FloatTensor(state.reshape(1,-1)), eval_pref.reshape(1,-1), torch.FloatTensor(np.array([[2.0]])))[0]
-        # value_g3 = agent.critic_target(torch.FloatTensor(state.reshape(1,-1)), eval_pref.reshape(1,-1), torch.FloatTensor(np.array([[3.0]])))[0]
+
         done = False
 
         temp_reward = np.zeros(args.num_preferences)
@@ -412,7 +405,7 @@ def continuous_train(agent, env, memory, writer, args):
     rng = np.random.RandomState(args.seed)
     pref_list = rng.rand(2000, args.num_preferences)
     pref_list = pref_list/np.sum(pref_list, axis=1)[:, None]
-    pref_list = torch.FloatTensor(pref_list)
+    # pref_list = FloatTensor(pref_list)
 
     max_steps = args.max_steps
 
@@ -424,7 +417,7 @@ def continuous_train(agent, env, memory, writer, args):
     else:
         lower_bound = 0
 
-    for i_episode in range(lower_bound, args.num_episodes):
+    for i_episode in tqdm(range(lower_bound, args.num_episodes)):
         episode_reward = 0
         episode_steps = 0
 
@@ -432,7 +425,6 @@ def continuous_train(agent, env, memory, writer, args):
         state, _ = env.reset()
 
         pref = rng.dirichlet(np.ones(args.num_preferences))
-        pref = torch.FloatTensor(pref)
 
         while not done and episode_steps < max_steps:
             action = agent.select_action(state, pref)  # Sample action from policy
@@ -459,13 +451,13 @@ def continuous_train(agent, env, memory, writer, args):
             episode_steps += 1
             total_numsteps += 1
 
-            episode_reward += pref.dot(FloatTensor(reward)).item()
+            episode_reward += pref.dot(reward).item()
 
             mask = 1 if not done else 0
 
-            state = torch.FloatTensor(state)
-            action = torch.FloatTensor(action)
-            reward = torch.FloatTensor(reward)
+            # state = FloatTensor(state)
+            # action = FloatTensor(action)
+            # reward = FloatTensor(reward)
 
             memory.push(state, pref, action, reward, next_state, pref, mask, agent) # Append transition to memory
 
@@ -473,7 +465,7 @@ def continuous_train(agent, env, memory, writer, args):
 
         writer.add_scalar('reward/train', episode_reward, i_episode)
 
-        if (i_episode % 1000 == 0) and (i_episode != 0):
+        if ((i_episode % 1000 == 0) and (i_episode != 0)):
             # Mark start of evaluation.
             print("Starting Evaluation")
             tock = time.perf_counter()
@@ -485,8 +477,6 @@ def continuous_train(agent, env, memory, writer, args):
 
             for eval_pref in pref_list:
                 state, _ = env.reset()
-                eval_pref = eval_pref.clone().detach().cpu()
-                temp_pref = eval_pref.numpy()
                 done = False
 
                 temp_reward = np.zeros(args.num_preferences)
@@ -499,7 +489,7 @@ def continuous_train(agent, env, memory, writer, args):
 
                     if done:
                         reward_list.append(temp_reward)
-                        eval_reward.append(np.dot(temp_pref, reward))
+                        eval_reward.append(np.dot(eval_pref, reward))
                     else:
                         pass
 
@@ -545,7 +535,6 @@ def continuous_evaluate(agent, env, args):
     rng = np.random.RandomState(args.seed)
     pref_list = rng.rand(2000, args.num_preferences)
     pref_list = pref_list/np.sum(pref_list, axis=1)[:, None]
-    pref_list = torch.FloatTensor(pref_list)
 
     if args.env_name == "minecart-v0":
         pareto_df = pd.read_csv("minecart_pareto.csv")
@@ -561,19 +550,13 @@ def continuous_evaluate(agent, env, args):
 
     for eval_pref in pref_list:
         state, _ = env.reset()
-        eval_pref = eval_pref.clone().detach().cpu()
-        temp_pref = eval_pref.numpy()
-        # value_f0 = agent.f_critic(torch.FloatTensor(state.reshape(1,-1)), eval_pref.reshape(1,-1))
-        # value_g0 = agent.critic_target(torch.FloatTensor(state.reshape(1,-1)), eval_pref.reshape(1,-1), torch.FloatTensor(np.array([[0.0]])))[0]
-        # value_g1 = agent.critic_target(torch.FloatTensor(state.reshape(1,-1)), eval_pref.reshape(1,-1), torch.FloatTensor(np.array([[1.0]])))[0]
-        # value_g2 = agent.critic_target(torch.FloatTensor(state.reshape(1,-1)), eval_pref.reshape(1,-1), torch.FloatTensor(np.array([[2.0]])))[0]
-        # value_g3 = agent.critic_target(torch.FloatTensor(state.reshape(1,-1)), eval_pref.reshape(1,-1), torch.FloatTensor(np.array([[3.0]])))[0]
+
         done = False
 
         temp_reward = np.zeros(args.num_preferences)
         count = 0
         while not done:
-            action = agent.act(state, eval_pref)
+            action = agent.act(FloatTensor(state), FloatTensor(eval_pref))
             next_state, reward, done, _, _ = env.step(action)
 
             temp_reward = temp_reward + reward * np.power(args.gamma, count)  
@@ -605,7 +588,7 @@ def continuous_evaluate(agent, env, args):
 
             if done:
                 reward_list.append(temp_reward)
-                eval_reward.append(np.dot(temp_pref, reward))
+                eval_reward.append(np.dot(eval_pref, reward))
             else:
                 pass
         
