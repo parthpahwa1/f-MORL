@@ -62,6 +62,7 @@ args = parser.parse_args()
 # Assertions
 assert args.divergence in {"alpha"}
 assert args.env_name in {"mo-hopper-v4", "mo-halfcheetah-v4"}
+args.env_name = args.env_name.replace('-', '_')
 
 if  torch.cuda.is_available():
     device = torch.device("cuda")
