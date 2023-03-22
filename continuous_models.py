@@ -84,7 +84,7 @@ class Continuous_G_Network(nn.Module):
 class ContinuousGaussianPolicy(nn.Module):
     def __init__(self, num_inputs, num_preferences, action_dim, hidden_dim):
         super(ContinuousGaussianPolicy, self).__init__()
-        
+
         self.linear1 = nn.Linear(num_inputs + num_preferences, (num_inputs + num_preferences)*16)
         self.linear2a = nn.Linear((num_inputs + num_preferences)*16, (num_inputs + num_preferences)*32)
         self.linear2b = nn.Linear((num_inputs + num_preferences)*32, (num_inputs + num_preferences)*64)
@@ -109,39 +109,34 @@ class ContinuousGaussianPolicy(nn.Module):
         x = F.relu(self.linear2a(x))
         x = F.relu(self.linear2b(x))
         x = F.relu(self.linear2c(x))
-        mean = self.mean_linear(x)
+        mean = F.hardtanh(self.mean_linear(x), -1, 1)
 
         # Standard deviation forward
         x = F.relu(self.linear3(input))
         x = F.relu(self.linear4a(x))
         x = F.relu(self.linear4b(x))
         x = F.relu(self.linear4c(x))
+        log_std = F.hardtanh(self.std_linear(x), -20, 2)
 
-        std = []
-        for item in self.std_linear(x)[0]:
-            if item >= 0:
-                std.append(item)
-            else:
-                std.append(-item)
-        
-        std = torch.FloatTensor(std).reshape(-1)
-
-        return mean, std
+        return mean, log_std
 
     def sample(self, state, preference):
-        mean, std = self.forward(state, preference)
+        mean, log_std = self.forward(state, preference)
+
+        std = log_std.exp()
 
         # Add std for distribution init
         m = torch.distributions.Normal(loc=mean, scale=std)
         
-        action = m.sample()
+        x_t = m.rsample()
+        action = torch.tanh(x_t)
+
+        log_prob = m.log_prob(x_t)
+        log_prob -= torch.log(1 * (1 - action.pow(2)) + 1e-6)
         
-        # Clamp action for mo-hopper-v4
-
-        log_prob = m.log_prob(action)
-        prob = torch.exp(log_prob)
-
-        return action, prob, action
+        prob = log_prob.exp()
+        
+        return action, prob
 
     def to(self, device):
         return super(ContinuousGaussianPolicy, self).to(device)
@@ -205,7 +200,7 @@ class ContinuousSAC(object):
         state = torch.Tensor(state).to(self.device).unsqueeze(0)
         preference = torch.FloatTensor(preference).to(self.device).unsqueeze(0)
 
-        action, _, _ = self.actor.sample(state, preference)
+        action, _ = self.actor.sample(state, preference)
 
         return action.detach().cpu().numpy()[0]
     
@@ -213,7 +208,7 @@ class ContinuousSAC(object):
         state = torch.Tensor(state).to(self.device).unsqueeze(0)
         preference = torch.FloatTensor(preference).to(self.device).unsqueeze(0)
 
-        _, _, action = self.actor.sample(state, preference)
+        action, _ = self.actor.sample(state, preference)
 
         return action.detach().cpu().numpy()[0]
 
@@ -221,14 +216,14 @@ class ContinuousSAC(object):
         if self.args.divergence == "alpha":
             if (self.args.alpha != 1) and (self.args.alpha != 0):
                 alpha = self.args.alpha
-                t = (pi+1e-10)/(prior+1e-10)
+                t = (pi+1e-10)/(prior.exp()+1e-10)
                 return t.pow(alpha-1)
             elif self.args.alpha == 1:
-                return torch.log((pi+1e-10)/(prior+1e-10))
+                return torch.log((pi+1e-10)) - (prior+1e-10)
             elif self.args.alpha == 0:
-                return -torch.log((pi+1e-10)/(prior+1e-10))
+                return -prior*torch.log((pi+1e-10)/(prior.exp()+1e-10))
         else:
-            raise TypeError("Divergence not recognised")
+            raise TypeError("Divergence not recognised.")
 
     def update_parameters(self, memory, batch_size, updates):
         # Sample a batch from memory
@@ -269,14 +264,16 @@ class ContinuousSAC(object):
         torch.nn.utils.clip_grad_norm_(self.critic.parameters(), 1)
         self.critic_optim.step()
 
-        action, pi, _ = self.actor.sample(state_batch, preference_batch)
+        action, pi = self.actor.sample(state_batch, preference_batch)
 
         G1_action0, G2_action0 = self.critic_target(state_batch, preference_batch, action)
         G_action0 = torch.min(G1_action0, G2_action0)
 
         policy_loss = self.divergence(pi, G_action0)
         policy_loss = policy_loss.mean()
-        policy_loss.clamp(-1, 1)
+
+        # clamp policy loss
+        policy_loss = policy_loss.clamp(-100, 100)
 
         # Actor backwards step
         self.actor_optim.zero_grad()
@@ -306,13 +303,13 @@ class ContinuousSAC(object):
         if not os.path.exists('checkpoints/'):
             os.makedirs('checkpoints/')
         
-        if not os.path.exists(f'checkpoints/{env_name}'):
-            os.makedirs(f'checkpoints/{env_name}')
+        if not os.path.exists(f"checkpoints/{env_name.replace('-', '_')}"):
+            os.makedirs(f"checkpoints/{env_name.replace('-', '_')}")
             
         if ckpt_path is None:
-            ckpt_path = "checkpoints/{}/{}_{}".format(env_name, env_name, suffix)
+            ckpt_path = "checkpoints/{}/{}_{}".format(env_name.replace('-', '_'), env_name.replace('-', '_'), suffix)
         else:
-            ckpt_path = f"checkpoints/{env_name}/" + ckpt_path
+            ckpt_path = f"checkpoints/{env_name.replace('-', '_')}/" + ckpt_path
         
         print('Saving models to {}'.format(ckpt_path))
 

@@ -9,7 +9,6 @@ from pymoo.indicators.hv import HV
 
 from typing import List, Optional, Tuple, Union
 
-
 if  torch.cuda.is_available():
     device = torch.device("cuda")
     FloatTensor = torch.cuda.FloatTensor 
@@ -414,7 +413,7 @@ def continuous_train(agent, env, memory, writer, args):
     pref_list = rng.rand(2000, args.num_preferences)
     pref_list = pref_list/np.sum(pref_list, axis=1)[:, None]
     pref_list = torch.FloatTensor(pref_list)
-    
+
     max_steps = args.max_steps
 
     total_numsteps = 0
@@ -425,7 +424,7 @@ def continuous_train(agent, env, memory, writer, args):
     else:
         lower_bound = 0
 
-    for i_episode in tqdm(range(lower_bound, args.num_episodes)):
+    for i_episode in range(lower_bound, args.num_episodes):
         episode_reward = 0
         episode_steps = 0
 
@@ -434,17 +433,16 @@ def continuous_train(agent, env, memory, writer, args):
 
         pref = rng.dirichlet(np.ones(args.num_preferences))
         pref = torch.FloatTensor(pref)
-       
 
         while not done and episode_steps < max_steps:
             action = agent.select_action(state, pref)  # Sample action from policy
 
             # Clamp actions here 
-            if args.env_name in ["mo-hopper-v4", "mo-halfcheetah-v4", "mo-mountaincarcontinuous-v0"]:
+            if args.env_name in ["mo-hopper-v4", "mo-halfcheetah-v4"]:
                 action = np.clip(action, -1, 1)
 
-            if (total_numsteps+1)%2==0:
-                action = rng.randint(0,1,size=args.action_dim)
+            # if (total_numsteps+1)%2==0:
+            #     action = rng.randint(0,1,size=args.action_dim)
 
             # If the number of steps is divisible by the batch size perform an update
             if (len(memory) > args.batch_size) and (i_episode != 0):
@@ -456,7 +454,7 @@ def continuous_train(agent, env, memory, writer, args):
                     writer.add_scalar('loss/critic_2', critic_2_loss, updates)
                     writer.add_scalar('loss/policy', policy_loss, updates)
                     updates += 1
-            
+
             next_state, reward, done, truncated, info = env.step(action) # Step
             episode_steps += 1
             total_numsteps += 1
@@ -475,7 +473,7 @@ def continuous_train(agent, env, memory, writer, args):
 
         writer.add_scalar('reward/train', episode_reward, i_episode)
 
-        if (i_episode % 100 == 0) and (i_episode != 0):
+        if (i_episode % 1000 == 0) and (i_episode != 0):
             # Mark start of evaluation.
             print("Starting Evaluation")
             tock = time.perf_counter()
@@ -504,7 +502,6 @@ def continuous_train(agent, env, memory, writer, args):
                         eval_reward.append(np.dot(temp_pref, reward))
                     else:
                         pass
-                    
 
                     state = next_state
 
@@ -518,29 +515,23 @@ def continuous_train(agent, env, memory, writer, args):
 
             writer.add_scalar('Test Average Reward', avg_reward, i_episode)
             writer.add_scalar('Hypervolume', hyper, i_episode)
-            
+
             # Mark end of evaluation
             tick = time.perf_counter()
             print(f"Evaluation completed in {round(tick-tock,2)}")
-            
-            print(
-                    "----------------------------------------"
-                    )
 
-            # , Value S0: {}, Value G0: {}, Value G1: {}
+            print("----------------------------------------")
+
             print(
                 "\nEpisode Count: {}; \nHypervolume {}; \nAvg. Reward: {}."
                 .format(i_episode, 
                         hyper,
-                        round(avg_reward, 2), 
-                        # float(value_f0.detach().cpu().numpy()), 
-                        # float(value_g0.detach().cpu().numpy()),
-                        # float(value_g1.detach().cpu().numpy())
+                        round(avg_reward, 2),
                         )
                     )
             print("----------------------------------------")
 
-            agent.save_checkpoint(args.env_name, ckpt_path=f"{args.env_name}_{args.divergence}_{args.alpha}_{i_episode}")
+            agent.save_checkpoint(args.env_name.replace("-", "_"), ckpt_path=f"{args.env_name.replace('-', '_')}_{args.divergence}_{args.alpha}_{i_episode}")
 
         if total_numsteps > args.num_steps or i_episode >= args.num_episodes:
             print("Training Complete")
