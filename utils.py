@@ -454,7 +454,7 @@ def continuous_train(agent, env, memory, writer, args):
                     writer.add_scalar('loss/critic_2', critic_2_loss, updates)
                     writer.add_scalar('loss/policy', policy_loss, updates)
                     updates += 1
-            
+
             next_state, reward, done, truncated, info = env.step(action) # Step
             episode_steps += 1
             total_numsteps += 1
@@ -531,7 +531,7 @@ def continuous_train(agent, env, memory, writer, args):
                     )
             print("----------------------------------------")
 
-            agent.save_checkpoint(args.env_name, ckpt_path=f"{args.env_name}_{args.divergence}_{args.alpha}_{i_episode}")
+            agent.save_checkpoint(args.env_name.replace("-", "_"), ckpt_path=f"{args.env_name.replace('-', '_')}_{args.divergence}_{args.alpha}_{i_episode}")
 
         if total_numsteps > args.num_steps or i_episode >= args.num_episodes:
             print("Training Complete")
