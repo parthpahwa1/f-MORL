@@ -106,11 +106,14 @@ class ContinuousMemory:
 
         agent.critic_target.eval()
         Q_val_0, Q_val_1 = agent.critic_target(FloatTensor(state).unsqueeze(0), FloatTensor(preference).unsqueeze(0), FloatTensor(action).unsqueeze(0))
-        
+        agent.critic_target.train()
+
         Q_val = torch.min(Q_val_0, Q_val_1)
 
         agent.critic_target.eval()
         hq_0, hq_1 = agent.critic_target(FloatTensor(state).unsqueeze(0), FloatTensor(preference).unsqueeze(0), FloatTensor(action).unsqueeze(0))
+        agent.critic_target.train()
+
         hq = torch.min(hq_0, hq_1)
         hq = torch.max(hq)
 
