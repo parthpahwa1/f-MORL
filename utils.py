@@ -429,13 +429,6 @@ def continuous_train(agent, env, memory, writer, args):
         while not done and episode_steps < max_steps:
             action = agent.select_action(state, pref)  # Sample action from policy
 
-            # Clamp actions here 
-            if args.env_name in ["mo-hopper-v4", "mo-halfcheetah-v4"]:
-                action = np.clip(action, -1, 1)
-
-            # if (total_numsteps+1)%2==0:
-            #     action = rng.randint(0,1,size=args.action_dim)
-
             # If the number of steps is divisible by the batch size perform an update
             if (len(memory) > args.batch_size) and (i_episode != 0):
                 # Number of updates per step in environment
@@ -454,10 +447,6 @@ def continuous_train(agent, env, memory, writer, args):
             episode_reward += pref.dot(reward).item()
 
             mask = 1 if not done else 0
-
-            # state = FloatTensor(state)
-            # action = FloatTensor(action)
-            # reward = FloatTensor(reward)
 
             memory.push(state, pref, action, reward, next_state, pref, mask, agent) # Append transition to memory
 

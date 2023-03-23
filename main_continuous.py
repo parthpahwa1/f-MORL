@@ -21,7 +21,7 @@ parser.add_argument('--env_name', default="mo-hopper-v4",
                     help='MOGYM enviroment (default: mo-hopper-v4)')
 parser.add_argument('--gamma', type=float, default=0.995, metavar='G',
                     help='discount factor for reward (default: 0.99)')
-parser.add_argument('--tau', type=float, default=0.005, metavar='G',
+parser.add_argument('--tau', type=float, default=0.001, metavar='G',
                     help='target smoothing coefficient(τ) (default: 0.005)')
 parser.add_argument('--lr', type=float, default=1e-4, metavar='G',
                     help='learning rate (default: 1e-4)')
