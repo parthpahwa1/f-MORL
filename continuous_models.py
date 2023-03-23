@@ -213,7 +213,7 @@ class ContinuousSAC(object):
         self.actor_optim = Adam(self.actor.parameters())
 
         return None
-    
+
     def select_action(self, state, preference):
         state = FloatTensor(state).to(self.device).unsqueeze(0)
         preference = FloatTensor(preference).to(self.device).unsqueeze(0)
