@@ -293,7 +293,12 @@ class ContinuousSAC(object):
 
         policy_loss = self.divergence(pi, G_action0)
         policy_loss = policy_loss.mean()
-        print(policy_loss)
+
+        if torch.isnan(policy_loss):
+            print(policy_loss)
+            print(G_action0, G1_action0, G2_action0)
+            print(pi)
+            
         # clamp policy loss
         policy_loss = policy_loss.clamp(-100, 100)
 
