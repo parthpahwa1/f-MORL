@@ -436,7 +436,7 @@ def continuous_train(agent, env, memory, writer, args):
 
         while not done and episode_steps < max_steps:
             action = agent.select_action(state, pref)  # Sample action from policy
-
+            print(action)
             # Clamp actions here 
             if args.env_name in ["mo-hopper-v4", "mo-halfcheetah-v4"]:
                 action = np.clip(action, -1, 1)
