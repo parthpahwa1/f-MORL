@@ -277,7 +277,6 @@ class ContinuousSAC(object):
         # JQ = 𝔼(st,at)~D[0.5(Q1(st,at) - r(st,at) - γ(𝔼st+1~p[V(st+1)]))^2]
         G1_loss = F.mse_loss(G1, next_G_value)  
         G2_loss = F.mse_loss(G2, next_G_value)  
-
         G_loss = G1_loss + G2_loss
 
         # Critic Backwards Step
@@ -286,21 +285,20 @@ class ContinuousSAC(object):
         torch.nn.utils.clip_grad_norm_(self.critic.parameters(), 1)
         self.critic_optim.step()
 
-        action, pi = self.actor.sample(state_batch, preference_batch)
+        pred_action, pi = self.actor.sample(state_batch, preference_batch)
 
-        G1_action0, G2_action0 = self.critic_target(state_batch, preference_batch, action)
+        G1_action0, G2_action0 = self.critic_target(state_batch, preference_batch, pred_action)
         G_action0 = torch.min(G1_action0, G2_action0)
 
+        # Calculate policy loss
         policy_loss = self.divergence(pi, G_action0)
         policy_loss = policy_loss.mean()
-
-        # clamp policy loss
         policy_loss = policy_loss.clamp(-100, 100)
 
         # Actor backwards step
         self.actor_optim.zero_grad()
         policy_loss.backward()
-        torch.nn.utils.clip_grad_norm_(self.actor.parameters(), 1)
+        # torch.nn.utils.clip_grad_norm_(self.actor.parameters(), 1)
         self.actor_optim.step()
 
         F_val = self.f_critic(state_batch, preference_batch)
@@ -311,7 +309,7 @@ class ContinuousSAC(object):
         # F critic backwards step
         self.f_optim.zero_grad()
         F_loss.backward()
-        torch.nn.utils.clip_grad_norm_(self.f_critic.parameters(), 1)
+        # torch.nn.utils.clip_grad_norm_(self.f_critic.parameters(), 1)
         self.f_optim.step()     
 
         soft_update(self.critic_target, self.critic, self.tau)
