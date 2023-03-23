@@ -46,10 +46,10 @@ class Continuous_F_Network(nn.Module):
 
     def forward(self, state, preference):
         input = torch.cat([state, preference], 1)
-        # input = self.batch_norm(input)
+        input = self.batch_norm(input)
         
         x = F.relu(self.linear1(input))
-        x = F.relu(self.linear2a(x)) 
+        x = F.relu(self.linear2a(x))
         # x = F.relu(self.linear2b(x)) + x
         # x = F.relu(self.linear2c(x)) + x
         x = self.mean_linear1(x)
@@ -80,14 +80,14 @@ class Continuous_G_Network(nn.Module):
 
     def forward(self, state, preference, action):
         xu = torch.cat([state, preference, action], 1)
-        # xu = self.batch_norm(xu)
-        
+        xu = self.batch_norm(xu)
+
         x1 = F.relu(self.linear1(xu)) 
         x1 = F.relu(self.linear2a(x1)) 
         # x1 = F.relu(self.linear2b(x1)) +x1
         # x1 = F.relu(self.linear2c(x1)) +x1
         x1 = self.mean_linear1(x1)
-        
+
         x2 = F.relu(self.linear3(xu))
         x2 = F.relu(self.linear4a(x2)) 
         # x2 = F.relu(self.linear4b(x2)) +x2
@@ -120,20 +120,20 @@ class ContinuousGaussianPolicy(nn.Module):
 
     def forward(self, state, preference):
         input = torch.cat([state, preference], 1)
-        # input = self.batch_norm(input)
+        input = self.batch_norm(input)
         # Mean network forward
         x = F.relu(self.linear1(input))
-        x = F.relu(self.linear2a(x)) 
+        x = F.relu(self.linear2a(x))
         # x = F.relu(self.linear2b(x)) +x
         # x = F.relu(self.linear2c(x)) +x
         mean = F.hardtanh(self.mean_linear(x), -1, 1)
 
         # Standard deviation forward
         x = F.relu(self.linear3(input))
-        x = F.relu(self.linear4a(x)) 
+        x = F.relu(self.linear4a(x))
         # x = F.relu(self.linear4b(x)) +x
         # x = F.relu(self.linear4c(x)) +x
-        log_std = F.hardtanh(self.std_linear(x), -20, 2)
+        log_std = F.hardtanh(self.std_linear(x), -10, 2)
 
         return mean, log_std
 
@@ -145,15 +145,14 @@ class ContinuousGaussianPolicy(nn.Module):
 
         # Add std for distribution init
         m = torch.distributions.Normal(loc=mean, scale=std)
-        
+
         x_t = m.rsample()
         action = torch.tanh(x_t)
 
         log_prob = m.log_prob(x_t)
-        log_prob -= torch.log(1 * (1 - action.pow(2)) + 1e-6)
-        
+        log_prob -= torch.log((1 - action.pow(2)) + 1e-6)
+
         prob = log_prob.exp()
-        
         return action, prob
 
     def to(self, device):
