@@ -108,12 +108,16 @@ class ContinuousMemory:
         preference_input = FloatTensor(preference).unsqueeze(0)
         action_input = FloatTensor(action).unsqueeze(0)
 
-        cond_one = torch.isnan(state_input).sum().item()!=0
-        cond_two = torch.isnan(preference_input).sum().item()!=0
-        cond_three =torch.isnan(action_input).sum().item()!=0 
+        cond_one = torch.isnan(state_input).any()
+        cond_two = torch.isnan(preference_input).any()
+        cond_three =torch.isnan(action_input).any()
 
         if ((cond_one or cond_two) or (cond_three)):
             print(state, "\n \n",preference, "\n \n", action, "\n \n")
+
+        for param in agent.critic_target.parameters():
+            if torch.isnan(param).any():
+                print(param)
 
         agent.critic_target.eval()
         Q_val_0, Q_val_1 = agent.critic_target(state_input, preference_input, action_input)
@@ -125,7 +129,7 @@ class ContinuousMemory:
         hq_0, hq_1 = agent.critic_target(state_input, preference_input, action_input)
         agent.critic_target.train()
         
-        if torch.isnan(hq_0) or torch.isnan(hq_1):
+        if torch.isnan(hq_0).any() or torch.isnan(hq_1).any():
             print(hq_0, hq_1, "\n \n", Q_val_0, Q_val_1)
             # print("\n")
             # print(state, preference, action, reward, "\n \n", next_state, next_preference, done)

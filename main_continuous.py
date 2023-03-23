@@ -19,22 +19,22 @@ from torch.utils.tensorboard import SummaryWriter
 parser = argparse.ArgumentParser(description='PyTorch Soft Actor-Critic Args')
 parser.add_argument('--env_name', default="mo-hopper-v4",
                     help='MOGYM enviroment (default: mo-hopper-v4)')
-parser.add_argument('--gamma', type=float, default=0.995, metavar='G',
+parser.add_argument('--gamma', type=float, default=0.99, metavar='G',
                     help='discount factor for reward (default: 0.99)')
 parser.add_argument('--tau', type=float, default=0.001, metavar='G',
                     help='target smoothing coefficient(τ) (default: 0.005)')
-parser.add_argument('--lr', type=float, default=1e-4, metavar='G',
-                    help='learning rate (default: 1e-4)')
+parser.add_argument('--lr', type=float, default=3e-4, metavar='G',
+                    help='learning rate (default: 3e-4)')
 parser.add_argument('--seed', type=int, default=123, metavar='N',
                     help='random seed (default: 123)')
-parser.add_argument('--batch_size', type=int, default=256, metavar='N',
+parser.add_argument('--batch_size', type=int, default=128, metavar='N',
                     help='batch size (default: 128)')
 parser.add_argument('--num_steps', type=int, default=int(1.5e7), metavar='N',
                     help='maximum number of steps (default: 1.5e6)')
 parser.add_argument('--num_episodes', type=int, default=100000, metavar='N',
                     help='maximum number of episodes (default: 3000)')
-parser.add_argument('--hidden_size', type=int, default=512, metavar='N',
-                    help='hidden size (default: 512)')
+parser.add_argument('--hidden_size', type=int, default=256, metavar='N',
+                    help='hidden size (default: 256)')
 parser.add_argument('--updates_per_step', type=int, default=1, metavar='N',
                     help='model updates per simulator step (default: 1)')
 parser.add_argument('--start_steps', type=int, default=10000, metavar='N',

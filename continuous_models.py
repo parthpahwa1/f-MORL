@@ -8,8 +8,10 @@ import torch.nn.functional as F
 from torch.distributions import Normal
 from torch.optim import Adam
 
+# torch.autograd.set_detect_anomaly(True)
+
 LOG_SIG_MAX = 2
-LOG_SIG_MIN = -20
+LOG_SIG_MIN = -10
 epsilon = 1e-6
 
 if  torch.cuda.is_available():
@@ -30,23 +32,22 @@ def weights_init_(m):
         torch.nn.init.xavier_uniform_(m.weight, gain=1)
         torch.nn.init.constant_(m.bias, 0)
 
-
 class Continuous_F_Network(nn.Module):
-    def __init__(self, num_inputs, num_preferences, action_dim, hidden_dim):
+    def __init__(self, num_inputs, num_preferences, hidden_dim):
         super(Continuous_F_Network, self).__init__()
 
-        self.batch_norm = nn.BatchNorm1d(num_inputs + num_preferences)
-        self.linear1 = nn.Linear(num_inputs + num_preferences, 528)
-        self.linear2a = nn.Linear(528, 528)
-        self.linear2b = nn.Linear(528, 528)
-        self.linear2c = nn.Linear(528, 528)
-        self.mean_linear1 = nn.Linear(528, 1)
+        # self.batch_norm = nn.BatchNorm1d(num_inputs + num_preferences)
+        self.linear1 = nn.Linear(num_inputs + num_preferences, hidden_dim)
+        self.linear2a = nn.Linear(hidden_dim, hidden_dim)
+        # self.linear2b = nn.Linear(hidden_dim, hidden_dim)
+        # self.linear2c = nn.Linear(hidden_dim, hidden_dim)
+        self.mean_linear1 = nn.Linear(hidden_dim, 1)
 
         self.apply(weights_init_)
 
     def forward(self, state, preference):
         input = torch.cat([state, preference], 1)
-        input = self.batch_norm(input)
+        # input = self.batch_norm(input)
         
         x = F.relu(self.linear1(input))
         x = F.relu(self.linear2a(x)) 
@@ -60,27 +61,27 @@ class Continuous_F_Network(nn.Module):
 class Continuous_G_Network(nn.Module):
     def __init__(self, num_inputs, num_preferences, action_dim, hidden_dim):
         super(Continuous_G_Network, self).__init__()
-        self.batch_norm = nn.BatchNorm1d(num_inputs + num_preferences + action_dim)
+        # self.batch_norm = nn.BatchNorm1d(num_inputs + num_preferences + action_dim)
         # Q1 architecture
-        self.linear1 = nn.Linear(num_inputs + num_preferences + action_dim, 528)
-        self.linear2a = nn.Linear(528, 528)
-        self.linear2b = nn.Linear(528, 528)
-        self.linear2c = nn.Linear(528, 528)
-        self.mean_linear1 = nn.Linear(528, 1)
+        self.linear1 = nn.Linear(num_inputs + num_preferences + action_dim, hidden_dim)
+        self.linear2a = nn.Linear(hidden_dim, hidden_dim)
+        # self.linear2b = nn.Linear(hidden_dim, hidden_dim)
+        # self.linear2c = nn.Linear(hidden_dim, hidden_dim)
+        self.mean_linear1 = nn.Linear(hidden_dim, 1)
 
         # Q2 architecture
-        self.linear3= nn.Linear(num_inputs + num_preferences + action_dim, 528)
-        self.linear4a = nn.Linear(528, 528)
-        self.linear4b = nn.Linear(528, 528)
-        self.linear4c = nn.Linear(528, 528)
-        self.mean_linear2 = nn.Linear(528, 1)
+        self.linear3= nn.Linear(num_inputs + num_preferences + action_dim, hidden_dim)
+        self.linear4a = nn.Linear(hidden_dim, hidden_dim)
+        # self.linear4b = nn.Linear(hidden_dim, hidden_dim)
+        # self.linear4c = nn.Linear(hidden_dim, hidden_dim)
+        self.mean_linear2 = nn.Linear(hidden_dim, 1)
 
         self.apply(weights_init_)
         return None
 
     def forward(self, state, preference, action):
         xu = torch.cat([state, preference, action], 1)
-        xu = self.batch_norm(xu)
+        # xu = self.batch_norm(xu)
         
         x1 = F.relu(self.linear1(xu)) 
         x1 = F.relu(self.linear2a(x1)) 
@@ -101,18 +102,18 @@ class ContinuousGaussianPolicy(nn.Module):
     def __init__(self, num_inputs, num_preferences, action_dim, hidden_dim):
         super(ContinuousGaussianPolicy, self).__init__()
         
-        self.batch_norm = nn.BatchNorm1d(num_inputs + num_preferences)
-        self.linear1 = nn.Linear(num_inputs + num_preferences, 528)
-        self.linear2a = nn.Linear(528, 528)
-        self.linear2b = nn.Linear(528, 528)
-        self.linear2c = nn.Linear(528, 528)
-        self.mean_linear = nn.Linear(528, action_dim)
+        # self.batch_norm = nn.BatchNorm1d(num_inputs + num_preferences)
+        self.linear1 = nn.Linear(num_inputs + num_preferences, hidden_dim)
+        self.linear2a = nn.Linear(hidden_dim, hidden_dim)
+        # self.linear2b = nn.Linear(hidden_dim, hidden_dim)
+        # self.linear2c = nn.Linear(hidden_dim, hidden_dim)
+        self.mean_linear = nn.Linear(hidden_dim, action_dim)
 
-        self.linear3 = nn.Linear(num_inputs + num_preferences, 528)
-        self.linear4a = nn.Linear(528, 528)
-        self.linear4b = nn.Linear(528, 528)
-        self.linear4c = nn.Linear(528, 528)
-        self.std_linear = nn.Linear(528, action_dim)
+        self.linear3 = nn.Linear(num_inputs + num_preferences, hidden_dim)
+        self.linear4a = nn.Linear(hidden_dim, hidden_dim)
+        # self.linear4b = nn.Linear(hidden_dim, hidden_dim)
+        # self.linear4c = nn.Linear(hidden_dim, hidden_dim)
+        self.std_linear = nn.Linear(hidden_dim, action_dim)
 
         self.apply(weights_init_)
 
@@ -120,7 +121,7 @@ class ContinuousGaussianPolicy(nn.Module):
 
     def forward(self, state, preference):
         input = torch.cat([state, preference], 1)
-        input = self.batch_norm(input)
+        # input = self.batch_norm(input)
         # Mean network forward
         x = F.relu(self.linear1(input))
         x = F.relu(self.linear2a(x)) 
@@ -133,7 +134,7 @@ class ContinuousGaussianPolicy(nn.Module):
         x = F.relu(self.linear4a(x)) 
         # x = F.relu(self.linear4b(x)) +x
         # x = F.relu(self.linear4c(x)) +x
-        log_std = F.hardtanh(self.std_linear(x), -20, 2)
+        log_std = F.hardtanh(self.std_linear(x), LOG_SIG_MIN, LOG_SIG_MAX)
 
         return mean, log_std
 
@@ -202,10 +203,10 @@ class ContinuousSAC(object):
 
         hard_update(self.critic_target, self.critic)
 
-        self.f_critic = Continuous_F_Network(self.num_inputs, self.n_preferences, self.action_dim, args.hidden_size).to(device)
+        self.f_critic = Continuous_F_Network(self.num_inputs, self.n_preferences, args.hidden_size).to(device)
         self.f_optim = Adam(self.f_critic.parameters())
 
-        self.f_target = Continuous_F_Network(self.num_inputs, self.n_preferences, self.action_dim, args.hidden_size).to(device)
+        self.f_target = Continuous_F_Network(self.num_inputs, self.n_preferences, args.hidden_size).to(device)
 
         hard_update(self.f_target, self.f_critic)
 
@@ -283,7 +284,7 @@ class ContinuousSAC(object):
         # Critic Backwards Step
         self.critic_optim.zero_grad()
         G_loss.backward()
-        torch.nn.utils.clip_grad_norm_(self.critic.parameters(), 1)
+        torch.nn.utils.clip_grad_norm_(self.critic.parameters(), max_norm=1)
         self.critic_optim.step()
 
         action, pi = self.actor.sample(state_batch, preference_batch)
@@ -294,7 +295,7 @@ class ContinuousSAC(object):
         policy_loss = self.divergence(pi, G_action0)
         policy_loss = policy_loss.mean()
 
-        if torch.isnan(policy_loss):
+        if torch.isnan(policy_loss).any():
             print(policy_loss)
             print(G_action0, G1_action0, G2_action0)
             print(pi)
@@ -305,7 +306,7 @@ class ContinuousSAC(object):
         # Actor backwards step
         self.actor_optim.zero_grad()
         policy_loss.backward()
-        torch.nn.utils.clip_grad_norm_(self.actor.parameters(), 1)
+        # torch.nn.utils.clip_grad_norm_(self.actor.parameters(), max_norm=1)
         self.actor_optim.step()
 
         F_val = self.f_critic(state_batch, preference_batch)
@@ -316,7 +317,7 @@ class ContinuousSAC(object):
         # F critic backwards step
         self.f_optim.zero_grad()
         F_loss.backward()
-        torch.nn.utils.clip_grad_norm_(self.f_critic.parameters(), 1)
+        # torch.nn.utils.clip_grad_norm_(self.f_critic.parameters(), max_norm=1)
         self.f_optim.step()     
 
         soft_update(self.critic_target, self.critic, self.tau)
