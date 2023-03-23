@@ -8,7 +8,7 @@ import torch.nn.functional as F
 from torch.distributions import Normal
 from torch.optim import Adam
 
-# torch.autograd.set_detect_anomaly(True)
+torch.autograd.set_detect_anomaly(True)
 
 LOG_SIG_MAX = 2
 LOG_SIG_MIN = -10
@@ -150,12 +150,9 @@ class ContinuousGaussianPolicy(nn.Module):
         x_t = m.rsample()
         action = torch.tanh(x_t)
 
-        log_prob = m.log_prob(x_t)
-        log_prob -= torch.log(1 * (1 - action.pow(2)) + 1e-6)
+        log_prob = m.log_prob(x_t)        
         
-        prob = log_prob.exp()
-        
-        return action, prob
+        return action, log_prob
 
     def to(self, device):
         return super(ContinuousGaussianPolicy, self).to(device)
@@ -231,16 +228,16 @@ class ContinuousSAC(object):
 
         return action.detach().cpu().numpy()[0]
 
-    def divergence(self, pi, prior):
+    def divergence(self, log_pi, prior):
         if self.args.divergence == "alpha":
             if (self.args.alpha != 1) and (self.args.alpha != 0):
                 alpha = self.args.alpha
-                t = (pi+1e-10)/(prior.exp()+1e-10)
+                t = (log_pi.exp()+1e-10)/(prior.exp()+1e-10)
                 return t.pow(alpha-1)
             elif self.args.alpha == 1:
-                return torch.log(pi) - (prior)
+                return log_pi - (prior)
             elif self.args.alpha == 0:
-                return -prior*torch.log((pi+1e-10)/(prior.exp()+1e-10))
+                return -prior*torch.log((log_pi.exp()+1e-10)/(prior.exp()+1e-10))
         else:
             raise TypeError("Divergence not recognised.")
 
@@ -284,15 +281,15 @@ class ContinuousSAC(object):
         # Critic Backwards Step
         self.critic_optim.zero_grad()
         G_loss.backward()
-        torch.nn.utils.clip_grad_norm_(self.critic.parameters(), max_norm=1)
+        # torch.nn.utils.clip_grad_norm_(self.critic.parameters(), max_norm=1)
         self.critic_optim.step()
 
-        action, pi = self.actor.sample(state_batch, preference_batch)
+        action, log_pi = self.actor.sample(state_batch, preference_batch)
 
         G1_action0, G2_action0 = self.critic_target(state_batch, preference_batch, action)
         G_action0 = torch.min(G1_action0, G2_action0)
 
-        policy_loss = self.divergence(pi, G_action0)
+        policy_loss = self.divergence(log_pi, G_action0)
         policy_loss = policy_loss.mean()
 
         if torch.isnan(policy_loss).any():
@@ -306,7 +303,7 @@ class ContinuousSAC(object):
         # Actor backwards step
         self.actor_optim.zero_grad()
         policy_loss.backward()
-        # torch.nn.utils.clip_grad_norm_(self.actor.parameters(), max_norm=1)
+        torch.nn.utils.clip_grad_norm_(self.actor.parameters(), max_norm=1)
         self.actor_optim.step()
 
         F_val = self.f_critic(state_batch, preference_batch)
