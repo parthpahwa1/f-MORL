@@ -104,20 +104,31 @@ class ContinuousMemory:
 
         self.buffer[self.position] = (state, preference, action, reward, next_state, next_preference, done)
 
+        state_input = FloatTensor(state).unsqueeze(0)
+        preference_input = FloatTensor(preference).unsqueeze(0)
+        action_input = FloatTensor(action).unsqueeze(0)
+
+        cond_one = torch.isnan(state_input).sum().item()!=0
+        cond_two = torch.isnan(preference_input).sum().item()!=0
+        cond_three =torch.isnan(action_input).sum().item()!=0 
+
+        if ((cond_one or cond_two) or (cond_three)):
+            print(state, "\n \n",preference, "\n \n", action, "\n \n")
+
         agent.critic_target.eval()
-        Q_val_0, Q_val_1 = agent.critic_target(FloatTensor(state).unsqueeze(0), FloatTensor(preference).unsqueeze(0), FloatTensor(action).unsqueeze(0))
+        Q_val_0, Q_val_1 = agent.critic_target(state_input, preference_input, action_input)
         agent.critic_target.train()
 
         Q_val = torch.min(Q_val_0, Q_val_1)
 
         agent.critic_target.eval()
-        hq_0, hq_1 = agent.critic_target(FloatTensor(state).unsqueeze(0), FloatTensor(preference).unsqueeze(0), FloatTensor(action).unsqueeze(0))
+        hq_0, hq_1 = agent.critic_target(state_input, preference_input, action_input)
         agent.critic_target.train()
         
         if torch.isnan(hq_0) or torch.isnan(hq_1):
             print(hq_0, hq_1, "\n \n", Q_val_0, Q_val_1)
-            print("\n")
-            print(state, preference, action, reward, "\n \n", next_state, next_preference, done)
+            # print("\n")
+            # print(state, preference, action, reward, "\n \n", next_state, next_preference, done)
 
         hq = torch.min(hq_0, hq_1)
         hq = torch.max(hq)
