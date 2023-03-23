@@ -46,7 +46,7 @@ class Continuous_F_Network(nn.Module):
 
     def forward(self, state, preference):
         input = torch.cat([state, preference], 1)
-        input = self.batch_norm(input)
+        # input = self.batch_norm(input)
         
         x = F.relu(self.linear1(input))
         x = F.relu(self.linear2a(x)) 
@@ -80,7 +80,7 @@ class Continuous_G_Network(nn.Module):
 
     def forward(self, state, preference, action):
         xu = torch.cat([state, preference, action], 1)
-        xu = self.batch_norm(xu)
+        # xu = self.batch_norm(xu)
         
         x1 = F.relu(self.linear1(xu)) 
         x1 = F.relu(self.linear2a(x1)) 
@@ -120,7 +120,7 @@ class ContinuousGaussianPolicy(nn.Module):
 
     def forward(self, state, preference):
         input = torch.cat([state, preference], 1)
-        input = self.batch_norm(input)
+        # input = self.batch_norm(input)
         # Mean network forward
         x = F.relu(self.linear1(input))
         x = F.relu(self.linear2a(x)) 
