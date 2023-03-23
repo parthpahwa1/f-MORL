@@ -258,7 +258,7 @@ class ContinuousSAC(object):
 
         preference_batch = FloatTensor(preference_batch).to(self.device)
         next_preference_batch = FloatTensor(next_preference_batch).to(self.device)
-        
+
         pref = self.rng.rand(preference_batch.shape[0]*(self.n_weights-1), self.args.num_preferences)
         pref = FloatTensor(pref/np.sum(pref))
 
