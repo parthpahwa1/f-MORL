@@ -112,7 +112,7 @@ class ContinuousGaussianPolicy(nn.Module):
         self.linear4a = nn.Linear(528, 528)
         # self.linear4b = nn.Linear(1024, 1024)
         # self.linear4c = nn.Linear(1024, 1024)
-        self.std_linear = nn.Linear(1024, action_dim)
+        self.std_linear = nn.Linear(528, action_dim)
 
         self.apply(weights_init_)
 
