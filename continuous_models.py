@@ -259,7 +259,7 @@ class ContinuousSAC(object):
 
         preference_batch = FloatTensor(preference_batch).to(self.device)
         next_preference_batch = FloatTensor(next_preference_batch).to(self.device)
-        
+
         pref = self.rng.rand(preference_batch.shape[0]*(self.n_weights-1), self.args.num_preferences)
         pref = FloatTensor(pref/np.sum(pref))
 
@@ -270,13 +270,13 @@ class ContinuousSAC(object):
             reward = torch.sum(preference_batch * reward_batch, dim=-1).reshape(-1,1)
             F_next_target = self.f_target(next_state_batch, next_preference_batch)
             target_G_value = reward + mask_batch * self.gamma * (F_next_target)
-        
+
         # Two Q-functions to mitigate positive bias in the policy improvement step
         G1, G2 = self.critic(state_batch, preference_batch, action_batch)
-        
+
         # JQ = 𝔼(st,at)~D[0.5(Q1(st,at) - r(st,at) - γ(𝔼st+1~p[V(st+1)]))^2]
-        G1_loss = F.mse_loss(G1, target_G_value)  
-        G2_loss = F.mse_loss(G2, target_G_value)  
+        G1_loss = F.mse_loss(G1, target_G_value)
+        G2_loss = F.mse_loss(G2, target_G_value)
 
         G_loss = G1_loss + G2_loss
 
@@ -298,7 +298,7 @@ class ContinuousSAC(object):
             print(policy_loss)
             print(G_action0, G1_action0, G2_action0)
             print(pi)
-            
+
         # clamp policy loss
         policy_loss = policy_loss.clamp(-100, 100)
 

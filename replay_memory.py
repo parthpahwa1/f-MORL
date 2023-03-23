@@ -112,13 +112,12 @@ class ContinuousMemory:
 
         agent.critic_target.eval()
         hq_0, hq_1 = agent.critic_target(FloatTensor(state).unsqueeze(0), FloatTensor(preference).unsqueeze(0), FloatTensor(action).unsqueeze(0))
+        agent.critic_target.train()
         
         if torch.isnan(hq_0) or torch.isnan(hq_1):
-            print(hq_0, hq_1, Q_val_0, Q_val_1)
-            print("\n", "\n")
-            print(state, preference, action, reward, next_state, next_preference, done, agent)
-
-        agent.critic_target.train()
+            print(hq_0, hq_1, "\n \n", Q_val_0, Q_val_1)
+            print("\n")
+            print(state, preference, action, reward, "\n \n", next_state, next_preference, done)
 
         hq = torch.min(hq_0, hq_1)
         hq = torch.max(hq)

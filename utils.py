@@ -416,15 +416,15 @@ def continuous_train(agent, env, memory, writer, args):
         lower_bound = agent.i_episode + 1
     else:
         lower_bound = 0
-
+        
+    
+    pref = rng.dirichlet(np.ones(args.num_preferences))
     for i_episode in tqdm(range(lower_bound, args.num_episodes)):
         episode_reward = 0
         episode_steps = 0
 
         done = False
         state, _ = env.reset()
-
-        pref = rng.dirichlet(np.ones(args.num_preferences))
 
         while not done and episode_steps < max_steps:
             action = agent.select_action(state, pref)  # Sample action from policy
@@ -448,9 +448,12 @@ def continuous_train(agent, env, memory, writer, args):
 
             mask = 1 if not done else 0
 
+            next_pref = rng.dirichlet(np.ones(args.num_preferences))
+
             memory.push(state, pref, action, reward, next_state, pref, mask, agent) # Append transition to memory
 
             state = next_state
+            pref = next_pref
         
         writer.add_scalar('Episode Length', episode_steps, i_episode)
 
