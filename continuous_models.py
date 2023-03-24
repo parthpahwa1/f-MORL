@@ -53,7 +53,7 @@ class Continuous_F_Network(nn.Module):
         x = F.relu(self.linear2a(x)) 
         x = F.relu(self.linear2b(x)) 
         # x = F.relu(self.linear2c(x)) + x
-        x = self.mean_linear1(x)
+        x = F.tanh(self.mean_linear1(x), -1, 1)
 
         return x
 
@@ -87,13 +87,13 @@ class Continuous_G_Network(nn.Module):
         x1 = F.relu(self.linear2a(x1)) 
         x1 = F.relu(self.linear2b(x1)) 
         # x1 = F.relu(self.linear2c(x1)) 
-        x1 = self.mean_linear1(x1)
+        x1 = F.tanh(self.mean_linear1(x1), -1, 1)
         
         x2 = F.relu(self.linear3(xu))
         x2 = F.relu(self.linear4a(x2)) 
         x2 = F.relu(self.linear4b(x2)) 
         # x2 = F.relu(self.linear4c(x2)) 
-        x2 = self.mean_linear2(x2)
+        x2 = F.tanh(self.mean_linear2(x2), -1, 1)
 
         return x1, x2
 
@@ -295,7 +295,7 @@ class ContinuousSAC(object):
         if torch.isnan(policy_loss).any():
             print(policy_loss)
             print(G_action0, G1_action0, G2_action0)
-            print(pi)
+            print(log_pi)
 
         # clamp policy loss
         policy_loss = policy_loss.clamp(-100, 100)

@@ -443,6 +443,7 @@ def continuous_train(agent, env, memory, writer, args):
             next_state, reward, done, truncated, info = env.step(action) # Step
             episode_steps += 1
             total_numsteps += 1
+            reward = np.tanh(reward)
 
             episode_reward += pref.dot(reward).item()
 
