@@ -53,7 +53,7 @@ class Continuous_F_Network(nn.Module):
         x = F.relu(self.linear2a(x)) 
         x = F.relu(self.linear2b(x)) 
         # x = F.relu(self.linear2c(x)) + x
-        x = F.tanh(self.mean_linear1(x))
+        x = F.sigmoid(self.mean_linear1(x))
 
         return x
 
@@ -87,13 +87,13 @@ class Continuous_G_Network(nn.Module):
         x1 = F.relu(self.linear2a(x1)) 
         x1 = F.relu(self.linear2b(x1)) 
         # x1 = F.relu(self.linear2c(x1)) 
-        x1 = F.tanh(self.mean_linear1(x1))
+        x1 = F.sigmoid(self.mean_linear1(x1))
         
         x2 = F.relu(self.linear3(xu))
         x2 = F.relu(self.linear4a(x2)) 
         x2 = F.relu(self.linear4b(x2)) 
         # x2 = F.relu(self.linear4c(x2)) 
-        x2 = F.tanh(self.mean_linear2(x2))
+        x2 = F.sigmoid(self.mean_linear2(x2))
 
         return x1, x2
 
@@ -232,12 +232,12 @@ class ContinuousSAC(object):
         if self.args.divergence == "alpha":
             if (self.args.alpha != 1) and (self.args.alpha != 0):
                 alpha = self.args.alpha
-                t = (log_pi.exp()+1e-10)/(prior.exp()+1e-10)
+                t = (log_pi.exp()+1e-10)/(prior+1e-10)
                 return t.pow(alpha-1)
             elif self.args.alpha == 1:
-                return log_pi - (prior)
+                return log_pi - (np.log(prior))
             elif self.args.alpha == 0:
-                return -prior*torch.log((log_pi.exp()+1e-10)/(prior.exp()+1e-10))
+                return -prior*torch.log((log_pi.exp()+1e-10)/(prior+1e-10))
         else:
             raise TypeError("Divergence not recognised.")
 
