@@ -39,7 +39,7 @@ class Continuous_F_Network(nn.Module):
         # self.batch_norm = nn.BatchNorm1d(num_inputs + num_preferences)
         self.linear1 = nn.Linear(num_inputs + num_preferences, hidden_dim)
         self.linear2a = nn.Linear(hidden_dim, hidden_dim)
-        # self.linear2b = nn.Linear(hidden_dim, hidden_dim)
+        self.linear2b = nn.Linear(hidden_dim, hidden_dim)
         # self.linear2c = nn.Linear(hidden_dim, hidden_dim)
         self.mean_linear1 = nn.Linear(hidden_dim, 1)
 
@@ -51,7 +51,7 @@ class Continuous_F_Network(nn.Module):
         
         x = F.relu(self.linear1(input))
         x = F.relu(self.linear2a(x)) 
-        # x = F.relu(self.linear2b(x)) + x
+        x = F.relu(self.linear2b(x)) 
         # x = F.relu(self.linear2c(x)) + x
         x = self.mean_linear1(x)
 
@@ -65,14 +65,14 @@ class Continuous_G_Network(nn.Module):
         # Q1 architecture
         self.linear1 = nn.Linear(num_inputs + num_preferences + action_dim, hidden_dim)
         self.linear2a = nn.Linear(hidden_dim, hidden_dim)
-        # self.linear2b = nn.Linear(hidden_dim, hidden_dim)
+        self.linear2b = nn.Linear(hidden_dim, hidden_dim)
         # self.linear2c = nn.Linear(hidden_dim, hidden_dim)
         self.mean_linear1 = nn.Linear(hidden_dim, 1)
 
         # Q2 architecture
         self.linear3= nn.Linear(num_inputs + num_preferences + action_dim, hidden_dim)
         self.linear4a = nn.Linear(hidden_dim, hidden_dim)
-        # self.linear4b = nn.Linear(hidden_dim, hidden_dim)
+        self.linear4b = nn.Linear(hidden_dim, hidden_dim)
         # self.linear4c = nn.Linear(hidden_dim, hidden_dim)
         self.mean_linear2 = nn.Linear(hidden_dim, 1)
 
@@ -85,14 +85,14 @@ class Continuous_G_Network(nn.Module):
         
         x1 = F.relu(self.linear1(xu)) 
         x1 = F.relu(self.linear2a(x1)) 
-        # x1 = F.relu(self.linear2b(x1)) +x1
-        # x1 = F.relu(self.linear2c(x1)) +x1
+        x1 = F.relu(self.linear2b(x1)) 
+        # x1 = F.relu(self.linear2c(x1)) 
         x1 = self.mean_linear1(x1)
         
         x2 = F.relu(self.linear3(xu))
         x2 = F.relu(self.linear4a(x2)) 
-        # x2 = F.relu(self.linear4b(x2)) +x2
-        # x2 = F.relu(self.linear4c(x2)) +x2
+        x2 = F.relu(self.linear4b(x2)) 
+        # x2 = F.relu(self.linear4c(x2)) 
         x2 = self.mean_linear2(x2)
 
         return x1, x2
@@ -105,13 +105,13 @@ class ContinuousGaussianPolicy(nn.Module):
         # self.batch_norm = nn.BatchNorm1d(num_inputs + num_preferences)
         self.linear1 = nn.Linear(num_inputs + num_preferences, hidden_dim)
         self.linear2a = nn.Linear(hidden_dim, hidden_dim)
-        # self.linear2b = nn.Linear(hidden_dim, hidden_dim)
+        self.linear2b = nn.Linear(hidden_dim, hidden_dim)
         # self.linear2c = nn.Linear(hidden_dim, hidden_dim)
         self.mean_linear = nn.Linear(hidden_dim, action_dim)
 
         self.linear3 = nn.Linear(num_inputs + num_preferences, hidden_dim)
         self.linear4a = nn.Linear(hidden_dim, hidden_dim)
-        # self.linear4b = nn.Linear(hidden_dim, hidden_dim)
+        self.linear4b = nn.Linear(hidden_dim, hidden_dim)
         # self.linear4c = nn.Linear(hidden_dim, hidden_dim)
         self.std_linear = nn.Linear(hidden_dim, action_dim)
 
@@ -125,14 +125,14 @@ class ContinuousGaussianPolicy(nn.Module):
         # Mean network forward
         x = F.relu(self.linear1(input))
         x = F.relu(self.linear2a(x)) 
-        # x = F.relu(self.linear2b(x)) +x
+        x = F.relu(self.linear2b(x))
         # x = F.relu(self.linear2c(x)) +x
         mean = F.hardtanh(self.mean_linear(x), -1, 1)
 
         # Standard deviation forward
         x = F.relu(self.linear3(input))
         x = F.relu(self.linear4a(x)) 
-        # x = F.relu(self.linear4b(x)) +x
+        x = F.relu(self.linear4b(x)) 
         # x = F.relu(self.linear4c(x)) +x
         log_std = F.hardtanh(self.std_linear(x), LOG_SIG_MIN, LOG_SIG_MAX)
 

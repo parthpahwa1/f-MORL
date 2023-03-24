@@ -27,12 +27,12 @@ parser.add_argument('--lr', type=float, default=3e-4, metavar='G',
                     help='learning rate (default: 3e-4)')
 parser.add_argument('--seed', type=int, default=123, metavar='N',
                     help='random seed (default: 123)')
-parser.add_argument('--batch_size', type=int, default=128, metavar='N',
-                    help='batch size (default: 128)')
-parser.add_argument('--num_steps', type=int, default=int(1.5e7), metavar='N',
-                    help='maximum number of steps (default: 1.5e6)')
-parser.add_argument('--num_episodes', type=int, default=100000, metavar='N',
-                    help='maximum number of episodes (default: 3000)')
+parser.add_argument('--batch_size', type=int, default=256, metavar='N',
+                    help='batch size (default: 256)')
+parser.add_argument('--num_steps', type=int, default=int(1e6), metavar='N',
+                    help='maximum number of steps (default: 1e6)')
+parser.add_argument('--num_episodes', type=int, default=int(1e6), metavar='N',
+                    help='maximum number of episodes (default: 100000)')
 parser.add_argument('--hidden_size', type=int, default=256, metavar='N',
                     help='hidden size (default: 256)')
 parser.add_argument('--updates_per_step', type=int, default=1, metavar='N',
@@ -41,8 +41,8 @@ parser.add_argument('--start_steps', type=int, default=10000, metavar='N',
                     help='Steps sampling random actions (default: 10000)')
 parser.add_argument('--target_update_interval', type=int, default= 1, metavar='N',
                     help='Value target update per no. of updates per step (default: 1)')
-parser.add_argument('--replay_size', type=int, default=int(2e6), metavar='N',
-                    help='size of replay buffer (default: 2e6)')
+parser.add_argument('--replay_size', type=int, default=int(1e6), metavar='N',
+                    help='size of replay buffer (default: 1e6)')
 parser.add_argument('--cuda', action="store_true",
                     help='run on CUDA (default: False)')
 parser.add_argument('--mps', action="store_true",
