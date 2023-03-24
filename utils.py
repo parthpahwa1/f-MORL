@@ -22,8 +22,8 @@ else:
     ByteTensor = torch.ByteTensor 
     Tensor = FloatTensor
 
-def logistic(x):
-    return 1 / (1+np.exp(-x))
+def logistic(x, scaling):
+    return 1 / (1+np.exp(-x/scaling))
 
 def hypervolume(ref_point: np.ndarray, points: List[np.ndarray]) -> float:
     """Computes the hypervolume metric for a set of points (value vectors) and a reference point.
@@ -445,7 +445,7 @@ def continuous_train(agent, env, memory, writer, args):
             next_state, reward, done, truncated, info = env.step(action) # Step
             episode_steps += 1
             total_numsteps += 1
-            reward = logistic(reward)
+            reward = logistic(reward, scaling=args.reward_scaling)
 
             episode_reward += pref.dot(reward).item()
 

@@ -54,6 +54,9 @@ parser.add_argument('--evaluate', action="store_true",
 parser.add_argument('--divergence', type=str, default='alpha',
                     help="Type of divergence constraint")
 
+parser.add_argument('--reward_scaling', type=float, default=100,
+                    help='Scaling term in sigmoid functions.')
+
 parser.add_argument('--alpha', type=float, default=1.0, metavar='G',
                     help='alpha divergence constant (default: 1.0)')
 
