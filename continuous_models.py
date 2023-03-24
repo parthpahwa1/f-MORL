@@ -235,7 +235,7 @@ class ContinuousSAC(object):
                 t = (log_pi.exp()+1e-10)/(prior+1e-10)
                 return t.pow(alpha-1)
             elif self.args.alpha == 1:
-                return log_pi - (np.log(prior))
+                return log_pi - (torch.log(prior))
             elif self.args.alpha == 0:
                 return -prior*torch.log((log_pi.exp()+1e-10)/(prior+1e-10))
         else:
