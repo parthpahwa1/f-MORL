@@ -1,6 +1,6 @@
 import os
 import numpy as np
-from utils import hard_update, soft_update
+from util_functions.utils import hard_update, soft_update
 
 from .base_classes import Continuous_G_Network, Continuous_F_Network, ContinuousGaussianPolicy
 
