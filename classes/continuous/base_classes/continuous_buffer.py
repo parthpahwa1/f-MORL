@@ -1,6 +1,6 @@
 import os
 import numpy as np
-from util_functions.utils import hard_update, soft_update
+from util_functions import hard_update, soft_update
 
 import random
 import numpy as np
