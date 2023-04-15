@@ -1,7 +1,10 @@
+import sys
+sys.path.append('..')
+
 import os
 import numpy as np
-from util_functions.utils import hard_update, soft_update
 
+from util_functions import hard_update, soft_update
 from .base_classes import Continuous_G_Network, Continuous_F_Network, ContinuousGaussianPolicy
 
 import torch
