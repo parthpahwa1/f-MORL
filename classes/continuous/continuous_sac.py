@@ -2,18 +2,20 @@ import os
 import numpy as np
 from utils import hard_update, soft_update
 
+from .base_classes import Continuous_G_Network, Continuous_F_Network, ContinuousGaussianPolicy
+
 import torch
 from torch import nn 
 import torch.nn.functional as F
 from torch.distributions import Normal
 from torch.optim import Adam
 
-torch.autograd.set_detect_anomaly(True)
-
 LOG_SIG_MAX = 2
 LOG_SIG_MIN = -10
 VALUE_SCALING = 1000
 epsilon = 1e-6
+
+torch.autograd.set_detect_anomaly(True)
 
 if  torch.cuda.is_available():
     device = torch.device("cuda")
@@ -32,131 +34,6 @@ def weights_init_(m):
     if isinstance(m, nn.Linear):
         torch.nn.init.xavier_uniform_(m.weight, gain=1)
         torch.nn.init.constant_(m.bias, 0)
-
-class Continuous_F_Network(nn.Module):
-    def __init__(self, num_inputs, num_preferences, hidden_dim):
-        super(Continuous_F_Network, self).__init__()
-
-        # self.batch_norm = nn.BatchNorm1d(num_inputs + num_preferences)
-        self.linear1 = nn.Linear(num_inputs + num_preferences, hidden_dim)
-        self.linear2a = nn.Linear(hidden_dim, hidden_dim)
-        self.linear2b = nn.Linear(hidden_dim, hidden_dim)
-        # self.linear2c = nn.Linear(hidden_dim, hidden_dim)
-        self.mean_linear1 = nn.Linear(hidden_dim, 1)
-
-        self.apply(weights_init_)
-
-    def forward(self, state, preference):
-        input = torch.cat([state, preference], 1)
-        # input = self.batch_norm(input)
-        
-        x = F.relu(self.linear1(input))
-        x = F.relu(self.linear2a(x)) 
-        x = F.relu(self.linear2b(x)) 
-        # x = F.relu(self.linear2c(x)) + x
-        x = F.sigmoid(self.mean_linear1(x)/VALUE_SCALING)
-
-        return x
-
-
-class Continuous_G_Network(nn.Module):
-    def __init__(self, num_inputs, num_preferences, action_dim, hidden_dim):
-        super(Continuous_G_Network, self).__init__()
-        # self.batch_norm = nn.BatchNorm1d(num_inputs + num_preferences + action_dim)
-        # Q1 architecture
-        self.linear1 = nn.Linear(num_inputs + num_preferences + action_dim, hidden_dim)
-        self.linear2a = nn.Linear(hidden_dim, hidden_dim)
-        self.linear2b = nn.Linear(hidden_dim, hidden_dim)
-        # self.linear2c = nn.Linear(hidden_dim, hidden_dim)
-        self.mean_linear1 = nn.Linear(hidden_dim, 1)
-
-        # Q2 architecture
-        self.linear3= nn.Linear(num_inputs + num_preferences + action_dim, hidden_dim)
-        self.linear4a = nn.Linear(hidden_dim, hidden_dim)
-        self.linear4b = nn.Linear(hidden_dim, hidden_dim)
-        # self.linear4c = nn.Linear(hidden_dim, hidden_dim)
-        self.mean_linear2 = nn.Linear(hidden_dim, 1)
-
-        self.apply(weights_init_)
-        return None
-
-    def forward(self, state, preference, action):
-        xu = torch.cat([state, preference, action], 1)
-        # xu = self.batch_norm(xu)
-        
-        x1 = F.relu(self.linear1(xu)) 
-        x1 = F.relu(self.linear2a(x1)) 
-        x1 = F.relu(self.linear2b(x1)) 
-        # x1 = F.relu(self.linear2c(x1)) 
-        x1 = F.sigmoid(self.mean_linear1(x1)/VALUE_SCALING)
-        
-        x2 = F.relu(self.linear3(xu))
-        x2 = F.relu(self.linear4a(x2)) 
-        x2 = F.relu(self.linear4b(x2)) 
-        # x2 = F.relu(self.linear4c(x2)) 
-        x2 = F.sigmoid(self.mean_linear2(x2)/VALUE_SCALING)
-
-        return x1, x2
-
-
-class ContinuousGaussianPolicy(nn.Module):
-    def __init__(self, num_inputs, num_preferences, action_dim, hidden_dim):
-        super(ContinuousGaussianPolicy, self).__init__()
-        
-        # self.batch_norm = nn.BatchNorm1d(num_inputs + num_preferences)
-        self.linear1 = nn.Linear(num_inputs + num_preferences, hidden_dim)
-        self.linear2a = nn.Linear(hidden_dim, hidden_dim)
-        self.linear2b = nn.Linear(hidden_dim, hidden_dim)
-        # self.linear2c = nn.Linear(hidden_dim, hidden_dim)
-        self.mean_linear = nn.Linear(hidden_dim, action_dim)
-
-        self.linear3 = nn.Linear(num_inputs + num_preferences, hidden_dim)
-        self.linear4a = nn.Linear(hidden_dim, hidden_dim)
-        self.linear4b = nn.Linear(hidden_dim, hidden_dim)
-        # self.linear4c = nn.Linear(hidden_dim, hidden_dim)
-        self.std_linear = nn.Linear(hidden_dim, action_dim)
-
-        self.apply(weights_init_)
-
-        return None
-
-    def forward(self, state, preference):
-        input = torch.cat([state, preference], 1)
-        # input = self.batch_norm(input)
-        # Mean network forward
-        x = F.relu(self.linear1(input))
-        x = F.relu(self.linear2a(x)) 
-        x = F.relu(self.linear2b(x))
-        # x = F.relu(self.linear2c(x)) +x
-        mean = F.hardtanh(self.mean_linear(x), -1, 1)
-
-        # Standard deviation forward
-        x = F.relu(self.linear3(input))
-        x = F.relu(self.linear4a(x)) 
-        x = F.relu(self.linear4b(x)) 
-        # x = F.relu(self.linear4c(x)) +x
-        log_std = F.hardtanh(self.std_linear(x), LOG_SIG_MIN, LOG_SIG_MAX)
-
-        return mean, log_std
-
-    def sample(self, state, preference):
-        self.eval()
-        mean, log_std = self.forward(state, preference)
-
-        std = log_std.exp()
-
-        # Add std for distribution init
-        m = torch.distributions.Normal(loc=mean, scale=std)
-        
-        x_t = m.rsample()
-        action = torch.tanh(x_t)
-
-        log_prob = m.log_prob(x_t)        
-        
-        return action, log_prob
-
-    def to(self, device):
-        return super(ContinuousGaussianPolicy, self).to(device)
 
 
 class ContinuousSAC(object):
@@ -184,13 +61,13 @@ class ContinuousSAC(object):
 
         self.i_episode = 0
         
-        # device = ""
-        # if args.cuda:
-        #     device = "cuda"
-        # elif args.mps:
-        #     device = "mps"
-        # else:
-        #     device = "cpu"
+        device = ""
+        if args.cuda:
+            device = "cuda"
+        elif args.mps:
+            device = "mps"
+        else:
+            device = "cpu"
 
         self.device = torch.device(device)
 

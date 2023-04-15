@@ -1,10 +1,9 @@
 import argparse
+import os
 import datetime
 import numpy as np
 from utils import *
-from discrete_models import *
-from continuous_models import *
-from replay_memory import *
+from classes import DiscreteSAC, DiscreteMemory
 import mo_gymnasium
 
 import torch
