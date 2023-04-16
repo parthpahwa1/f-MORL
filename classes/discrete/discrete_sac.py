@@ -103,16 +103,17 @@ class DiscreteSAC(object):
         return action.detach().cpu().numpy()[0]
 
     def divergance(self, pi, prior):
+        # Note that a prior are softmaxed before divergence() method is called
         if self.args.divergence == "alpha":
             if (self.args.alpha != 1) and (self.args.alpha != 0):
                 alpha = self.args.alpha
                 t = (pi+1e-10)/(prior+1e-10)
                 return (t.pow(alpha) - alpha*t - (1-alpha))/(alpha*(alpha-1))
             elif self.args.alpha == 1:
-                return pi*torch.log((pi+1e-10)/(prior+1e-10))
+                return torch.log((pi+1e-10)/(prior+1e-10))
             elif self.args.alpha == 0:
-                return -prior*torch.log((pi+1e-10)/(prior+1e-10))
-       
+                return -torch.log((pi+1e-10)/(prior+1e-10))
+
         elif self.args.divergence == "variational_distance":
             return 0.5*torch.abs((pi+1e-10)/(prior+1e-10)-1)
        
