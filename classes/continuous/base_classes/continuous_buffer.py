@@ -8,7 +8,6 @@ import pickle
 import os
 import torch
 
-
 if  torch.cuda.is_available():
     device = torch.device("cuda")
     FloatTensor = torch.cuda.FloatTensor 
@@ -32,7 +31,24 @@ class ContinuousMemory:
         self.priority_mem = []
         self.position = 0
 
-    def push(self, state, preference, action, reward, next_state, next_preference, done, agent):
+    def push(self, state: FloatTensor, preference: FloatTensor, action: FloatTensor, reward: float,
+             next_state: FloatTensor, next_preference: FloatTensor, done: bool, agent) -> None:
+        """
+        Adds a new experience tuple to the buffer.
+
+        Args:
+            state (FloatTensor): The state of the environment at the current time step.
+            preference (FloatTensor): The preference vector of the agent at the current time step.
+            action (FloatTensor): The action taken by the agent at the current time step.
+            reward (float): The reward received by the agent at the current time step.
+            next_state (FloatTensor): The state of the environment at the next time step.
+            next_preference (FloatTensor): The preference vector of the agent at the next time step.
+            done (bool): Whether the episode has ended after the current time step.
+            agent: The agent object that interacts with the environment and updates its parameters.
+
+        Returns:
+            None
+        """
         if len(self.buffer) < self.capacity:
             self.buffer.append(None)
             self.priority_mem.append(None)
@@ -45,10 +61,10 @@ class ContinuousMemory:
 
         cond_one = torch.isnan(state_input).any()
         cond_two = torch.isnan(preference_input).any()
-        cond_three =torch.isnan(action_input).any()
+        cond_three = torch.isnan(action_input).any()
 
         if ((cond_one or cond_two) or (cond_three)):
-            print(state, "\n \n",preference, "\n \n", action, "\n \n")
+            print(state, "\n \n", preference, "\n \n", action, "\n \n")
 
         for param in agent.critic_target.parameters():
             if torch.isnan(param).any():
@@ -60,14 +76,12 @@ class ContinuousMemory:
 
         Q_val = torch.min(Q_val_0, Q_val_1)
 
-        agent.critic_target.eval()
-        hq_0, hq_1 = agent.critic_target(state_input, preference_input, action_input)
-        agent.critic_target.train()
-        
+        agent.critic.eval()
+        hq_0, hq_1 = agent.critic(state_input, preference_input, action_input)
+        agent.critic.train()
+
         if torch.isnan(hq_0).any() or torch.isnan(hq_1).any():
             print(hq_0, hq_1, "\n \n", Q_val_0, Q_val_1)
-            # print("\n")
-            # print(state, preference, action, reward, "\n \n", next_state, next_preference, done)
 
         hq = torch.min(hq_0, hq_1)
         hq = torch.max(hq)
@@ -79,8 +93,10 @@ class ContinuousMemory:
 
         self.position = (self.position + 1) % self.capacity
 
-    def sample(self, batch_size):
-        pri =  np.array(self.priority_mem)
+        return None
+
+    def sample(self, batch_size: int) -> tuple:
+        pri = np.array(self.priority_mem)
         pri = pri / pri.sum()
 
         pri = pri.flatten()

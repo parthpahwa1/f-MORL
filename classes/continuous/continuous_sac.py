@@ -107,23 +107,20 @@ class ContinuousSAC(object):
 
         return action.detach().cpu().numpy()[0]
 
-    def divergence(self, log_pi, prior):
+    def divergence(self, log_pi: torch.Tensor, prior: torch.Tensor) -> torch.Tensor:
         if self.args.divergence == "alpha":
-            if (self.args.alpha != 1) and (self.args.alpha != 0):
+            if self.args.alpha != 1 and self.args.alpha != 0:
                 alpha = self.args.alpha
-                # t = (log_pi.exp()+1e-10)/(prior+1e-10)
-
-                loss = (1 / (alpha * (alpha - 1))) * torch.mean(torch.sum((prior * ((prior + 1e-10) ** (1 - alpha)) - torch.exp(log_pi) * ((torch.exp(log_pi) + 1e-10) ** (1 - alpha))) - (1 / (1 - alpha)), dim=1))
-
-                # return t.pow(alpha-1)
-
+                prior_term = prior * ((prior + 1e-10) ** (1 - alpha))
+                log_term = torch.exp(log_pi) * ((torch.exp(log_pi) + 1e-10) ** (1 - alpha))
+                loss = (1 / (alpha * (alpha - 1))) * torch.mean(torch.sum(prior_term - log_term - (1 / (1 - alpha)), dim=1))
                 return loss
             elif self.args.alpha == 1:
-                return log_pi - (torch.log(prior))
+                return log_pi - torch.log(prior)
             elif self.args.alpha == 0:
-                return -prior*torch.log((log_pi.exp()+1e-10)/(prior+1e-10))
+                return -prior * torch.log((log_pi.exp() + 1e-10) / (prior + 1e-10))
         else:
-            raise TypeError("Divergence not recognised.")
+            raise ValueError("Unrecognized divergence type.")
 
     def update_parameters(self, memory, batch_size, updates):
         # Sample a batch from memory

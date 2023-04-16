@@ -1,24 +1,26 @@
-import argparse
-import datetime
-import numpy as np
-from utils import continuous_train, continuous_evaluate
-from classes import ContinuousSAC, ContinuousMemory
 import os
-import mo_gymnasium
-import multiprocessing
-from multiprocessing import Pool
-from functools import partial
+import datetime
+import argparse
 import copy
+import multiprocessing as mp
 from tqdm import tqdm
+from typing import Optional
+from functools import partial
 
+import numpy as np
+import mo_gymnasium
 import torch
-from torch import nn 
 import torch.nn.functional as F
+from torch import nn
 from torch.utils.tensorboard import SummaryWriter
 
+from classes import ContinuousMemory, ContinuousSAC
+from utils import continuous_evaluate, continuous_train
+
 parser = argparse.ArgumentParser(description='PyTorch Soft Actor-Critic Args')
+
 parser.add_argument('--env_name', default="mo-hopper-v4",
-                    help='MOGYM enviroment (default: mo-hopper-v4)')
+                    help='MOGYM environment (default: mo-hopper-v4)')
 parser.add_argument('--gamma', type=float, default=0.99, metavar='G',
                     help='discount factor for reward (default: 0.99)')
 parser.add_argument('--tau', type=float, default=0.001, metavar='G',
@@ -39,7 +41,7 @@ parser.add_argument('--updates_per_step', type=int, default=1, metavar='N',
                     help='model updates per simulator step (default: 1)')
 parser.add_argument('--start_steps', type=int, default=10000, metavar='N',
                     help='Steps sampling random actions (default: 10000)')
-parser.add_argument('--target_update_interval', type=int, default= 1, metavar='N',
+parser.add_argument('--target_update_interval', type=int, default=1, metavar='N',
                     help='Value target update per no. of updates per step (default: 1)')
 parser.add_argument('--replay_size', type=int, default=int(1e6), metavar='N',
                     help='size of replay buffer (default: 1e6)')
@@ -51,8 +53,6 @@ parser.add_argument('--evaluate', action="store_true",
                     help="Evaluate or Train")
 parser.add_argument('--divergence', type=str, default='alpha',
                     help="Type of divergence constraint")
-parser.add_argument('--reward_scaling', type=float, default=1000,
-                    help='Scaling term in sigmoid functions.')
 parser.add_argument('--alpha', type=float, default=1.0, metavar='G',
                     help='alpha divergence constant (default: 1.0)')
 
@@ -67,7 +67,7 @@ if  torch.cuda.is_available():
     FloatTensor = torch.cuda.FloatTensor 
     LongTensor = torch.cuda.LongTensor 
     ByteTensor = torch.cuda.ByteTensor 
-    Tensor = FloatTensor
+    Tensor = FloatTensor  
 else:
     device = torch.device("cpu")
     FloatTensor = torch.FloatTensor 
@@ -75,28 +75,42 @@ else:
     ByteTensor = torch.ByteTensor 
     Tensor = FloatTensor
 
-def multi_train(args_input, alpha):
-    args_copy = copy.deepcopy(args_input) 
-    # If set cost_objective=False set argsnum_preferences = 2, else set args.num_preferences=3
+def multi_train(args_input, env, alpha: float) -> Optional[None]:
+    """
+    Trains a ContinuousSAC agent and saves the checkpoint and TensorBoard logs.
+    :param args_input: The arguments for the training process.
+    :param alpha: The learning rate for the training process.
+    :return: None.
+    """
+    # Make a deep copy of the input arguments to avoid modifying the original object.
+    args_copy = copy.deepcopy(args_input)
+    
+    # Set the learning rate of the agent to the given alpha.
     args_copy.alpha = alpha
     
+    # Create a ContinuousSAC agent with the given input arguments.
     agent = ContinuousSAC(args_copy.num_inputs, args_copy)
 
+    # Find the latest checkpoint file and load it if it exists.
     i_max = 0
-    for i in range(0,60):
-        if os.path.exists(f"checkpoints/{args_copy.env_name.replace('-','_')}/{args_copy.env_name.replace('-','_')}_{args_copy.divergence}_{args_copy.alpha}_{i*50}"):
-            i_max = i*50
+    for i in range(0, 60):
+        checkpoint_path = f"checkpoints/{args_copy.env_name.replace('-', '_')}/{args_copy.env_name.replace('-', '_')}_{args_copy.divergence}_{args_copy.alpha}_{i * 50}"
+        if os.path.exists(checkpoint_path):
+            i_max = i * 50
         else:
             pass
 
     if i_max != 0:
-        agent.load_checkpoint(f"checkpoints/{args_copy.env_name.replace('-','_')}/{args_copy.env_name.replace('-','_')}_{args_copy.divergence}_{args_copy.alpha}_{i_max}")
+        agent.load_checkpoint(f"checkpoints/{args_copy.env_name.replace('-', '_')}/{args_copy.env_name.replace('-', '_')}_{args_copy.divergence}_{args_copy.alpha}_{i_max}")
 
+    # If evaluate flag is not set, train the agent and save the TensorBoard logs.
     if not args_copy.evaluate:
-        memory = ContinuousMemory(args_copy.replay_size,  args_copy.gamma, args_copy.seed)
-        writer = SummaryWriter(f"./tensorboard_logs/{args_copy.env_name.replace('-','_')}/{datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}_SAC_{args_copy.env_name.replace('-','_')}_{args_copy.divergence}_{args_copy.alpha}")
+        memory = ContinuousMemory(args_copy.replay_size, args_copy.gamma, args_copy.seed)
+        log_dir = f"./tensorboard_logs/{args_copy.env_name.replace('-', '_')}/{datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}_SAC_{args_copy.env_name.replace('-', '_')}_{args_copy.divergence}_{args_copy.alpha}"
+        writer = SummaryWriter(log_dir)
         continuous_train(agent, env, memory, writer, args_copy)
     else:
+        # If evaluate flag is set, evaluate the agent on the environment and print the results.
         print(continuous_evaluate(agent, env, args_copy))
     
     return None
@@ -120,30 +134,9 @@ if __name__ == "__main__":
         args.ref_point = np.zeros(args.num_preferences)
         args.max_steps = 1000
         
-        func = partial(multi_train, args)
+        func = partial(multi_train, args_input=args, env=env)
 
         func(alpha=args.alpha)
-
-        # cpu_count = multiprocessing.cpu_count()
-        # alphas = [i/5 for i in range(0,11)]
-
-        # if len(alphas) < cpu_count:
-        #     num_int = 1
-        # else:
-        #     if len(alphas) % cpu_count == 0:
-        #         num_int = int(len(alphas)/cpu_count)
-        #     else:
-        #         num_int = int(len(alphas)/cpu_count) + 1
-
-        # for i in range(num_int):
-        #     with Pool(cpu_count) as p:
-        #         p.map(func, alphas[:cpu_count*(i+1)])
-        
-        # alphas = [-item for item in alphas]
-
-        # for i in range(num_int):
-        #     with Pool(cpu_count) as p:
-        #         p.map(func, alphas[:cpu_count*(i+1)])
 
     elif args.env_name == "mo-halfcheetah-v4":
 
@@ -155,14 +148,10 @@ if __name__ == "__main__":
         args.ref_point = np.zeros(args.num_preferences)
         args.max_steps = 1000
 
-        multi_train(args, 1)
-        # func = partial(multi_train, args)
+        func = partial(multi_train, args_input=args, env=env)
 
-        # with Pool(multiprocessing.cpu_count()) as p:
-        #     p.map(func, [*[i/5 for i in range(0,11)]])
-        
-        # with Pool(multiprocessing.cpu_count()) as p:
-        #     p.map(func, [*[-i/5 for i in range(1,11)]])
+        func(alpha=args.alpha)
+     
 
     else:
         raise NameError(f"{args.env_name} is not an enviroment.")
