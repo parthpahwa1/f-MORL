@@ -107,7 +107,7 @@ class DiscreteSAC(object):
             if (self.args.alpha != 1) and (self.args.alpha != 0):
                 alpha = self.args.alpha
                 t = (pi+1e-10)/(prior+1e-10)
-                return pi*(t.pow(alpha) - alpha*t - (1-alpha))/(alpha*(alpha-1))
+                return (t.pow(alpha) - alpha*t - (1-alpha))/(alpha*(alpha-1))
             elif self.args.alpha == 1:
                 return pi*torch.log((pi+1e-10)/(prior+1e-10))
             elif self.args.alpha == 0:
