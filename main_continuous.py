@@ -1,7 +1,7 @@
 import argparse
 import datetime
 import numpy as np
-from util_functions import *
+from utils import continuous_train, continuous_evaluate
 from classes import ContinuousSAC, ContinuousMemory
 import os
 import mo_gymnasium

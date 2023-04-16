@@ -1,6 +1,3 @@
-import sys
-sys.path.append('..')
-
 import os
 import numpy as np
 
@@ -10,9 +7,9 @@ import torch.nn.functional as F
 from torch.distributions import Normal
 from torch.optim import Adam
 
-from util_functions import hard_update, soft_update
+from utils.base_utils import hard_update, soft_update
 from .base_classes import Continuous_G_Network, Continuous_F_Network, ContinuousGaussianPolicy
-from .base_classes import ContinuousParameters
+from ..parameters import ContinuousParameters
 
 LOG_SIG_MAX = ContinuousParameters.get_log_sig_max()
 LOG_SIG_MIN = ContinuousParameters.get_log_sig_min()

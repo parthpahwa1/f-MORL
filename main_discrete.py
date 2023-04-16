@@ -2,7 +2,7 @@ import argparse
 import os
 import datetime
 import numpy as np
-from util_functions import *
+from utils import *
 from classes import DiscreteSAC, DiscreteMemory
 import mo_gymnasium
 

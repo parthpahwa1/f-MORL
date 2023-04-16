@@ -9,7 +9,7 @@ from pymoo.indicators.hv import HV
 
 from typing import List, Optional, Tuple, Union
 
-from .base_utils import *
+from ..base_utils.base_utils import *
 
 if  torch.cuda.is_available():
     device = torch.device("cuda")

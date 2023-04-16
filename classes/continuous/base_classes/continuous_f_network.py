@@ -1,6 +1,6 @@
 import os
 import numpy as np
-from util_functions import hard_update, soft_update
+from utils.base_utils import hard_update, soft_update
 
 import torch
 from torch import nn 
@@ -10,7 +10,7 @@ from torch.optim import Adam
 
 torch.autograd.set_detect_anomaly(True)
 
-from .continuous_params import ContinuousParameters
+from ...parameters import ContinuousParameters
 LOG_SIG_MAX = ContinuousParameters.get_log_sig_max()
 LOG_SIG_MIN = ContinuousParameters.get_log_sig_min()
 VALUE_SCALING = ContinuousParameters.get_value_scaling()

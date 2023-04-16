@@ -1,6 +1,6 @@
 import os
 import numpy as np
-from util_functions import hard_update, soft_update
+from utils.base_utils import hard_update, soft_update
 
 import torch
 from torch import nn 
