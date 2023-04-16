@@ -10,6 +10,9 @@ from pymoo.indicators.hv import HV
 from typing import List, Optional, Tuple, Union
 
 from .base_utils import *
+from ..classes import ContinuousParameters
+
+VALUE_SCALING = ContinuousParameters.get_value_scaling()
 
 if  torch.cuda.is_available():
     device = torch.device("cuda")
@@ -67,7 +70,9 @@ def continuous_train(agent, env, memory, writer, args):
             next_state, reward, done, truncated, info = env.step(action) # Step
             episode_steps += 1
             total_numsteps += 1
-            reward = logistic(reward, scaling=args.reward_scaling)
+
+            # Scale Reward
+            reward = logistic(reward, scaling=VALUE_SCALING)
 
             episode_reward += pref.dot(reward).item()
 
@@ -79,7 +84,7 @@ def continuous_train(agent, env, memory, writer, args):
 
             state = next_state
             pref = next_pref
-        
+
         writer.add_scalar('Episode Length', episode_steps, i_episode)
 
         if ((i_episode % 250 == 0) and (i_episode != 0)):
