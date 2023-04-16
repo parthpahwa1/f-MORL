@@ -98,7 +98,7 @@ class ContinuousSAC(object):
         action, _ = self.actor.sample(state, preference)
 
         return action.detach().cpu().numpy()[0]
-    
+
     def act(self, state, preference):
         state = FloatTensor(state).to(self.device).unsqueeze(0)
         preference = FloatTensor(preference).to(self.device).unsqueeze(0)
