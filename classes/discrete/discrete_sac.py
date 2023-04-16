@@ -13,10 +13,6 @@ from torch.optim import Adam
 
 from .base_classes import Discrete_F_Network, DiscreteGaussianPolicy, Discrete_G_Network
 
-LOG_SIG_MAX = 2
-LOG_SIG_MIN = -20
-epsilon = 1e-6
-
 if  torch.cuda.is_available():
     device = torch.device("cuda")
     FloatTensor = torch.cuda.FloatTensor 
@@ -35,7 +31,6 @@ def weights_init_(m):
     if isinstance(m, nn.Linear):
         torch.nn.init.xavier_uniform_(m.weight, gain=1)
         torch.nn.init.constant_(m.bias, 0)
-
 
 class DiscreteSAC(object):
 

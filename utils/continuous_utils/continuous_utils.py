@@ -132,7 +132,7 @@ def continuous_train(agent, env, memory, writer, args):
                 # Initialize variables for tracking episode rewards
                 temp_reward = np.zeros(args.num_preferences)
                 count = 0
-                
+
                 # Loop through each step of the episode
                 while not done:
                     # Take action using current policy and evaluation preference
