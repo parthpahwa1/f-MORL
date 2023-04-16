@@ -111,10 +111,8 @@ class ContinuousSAC(object):
         if self.args.divergence == "alpha":
             if self.args.alpha != 1 and self.args.alpha != 0:
                 alpha = self.args.alpha
-                prior_term = prior * ((prior + 1e-10) ** (1 - alpha))
-                log_term = torch.exp(log_pi) * ((torch.exp(log_pi) + 1e-10) ** (1 - alpha))
-                loss = (1 / (alpha * (alpha - 1))) * torch.mean(torch.sum(prior_term - log_term - (1 / (1 - alpha)), dim=1))
-                return loss
+                t = (log_pi.exp()+1e-10)/(prior+1e-10)
+                return t.pow(alpha-1)
             elif self.args.alpha == 1:
                 return log_pi - torch.log(prior)
             elif self.args.alpha == 0:
