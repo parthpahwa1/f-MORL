@@ -3,3 +3,4 @@ from .continuous_critic import Continuous_G_Network
 from .continuous_f_network import Continuous_F_Network
 
 from .continuous_buffer import ContinuousMemory
+from .continuous_params import ContinuousParameters

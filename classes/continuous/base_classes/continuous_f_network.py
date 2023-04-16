@@ -10,10 +10,11 @@ from torch.optim import Adam
 
 torch.autograd.set_detect_anomaly(True)
 
-LOG_SIG_MAX = 2
-LOG_SIG_MIN = -10
-VALUE_SCALING = 1000
-epsilon = 1e-6
+from .continuous_params import ContinuousParameters
+LOG_SIG_MAX = ContinuousParameters.get_log_sig_max()
+LOG_SIG_MIN = ContinuousParameters.get_log_sig_min()
+VALUE_SCALING = ContinuousParameters.get_value_scaling()
+epsilon = ContinuousParameters.get_epsilon()
 
 if  torch.cuda.is_available():
     device = torch.device("cuda")

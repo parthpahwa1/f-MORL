@@ -4,19 +4,20 @@ sys.path.append('..')
 import os
 import numpy as np
 
-from util_functions import hard_update, soft_update
-from .base_classes import Continuous_G_Network, Continuous_F_Network, ContinuousGaussianPolicy
-
 import torch
 from torch import nn 
 import torch.nn.functional as F
 from torch.distributions import Normal
 from torch.optim import Adam
 
-LOG_SIG_MAX = 2
-LOG_SIG_MIN = -10
-VALUE_SCALING = 1000
-epsilon = 1e-6
+from util_functions import hard_update, soft_update
+from .base_classes import Continuous_G_Network, Continuous_F_Network, ContinuousGaussianPolicy
+from .base_classes import ContinuousParameters
+
+LOG_SIG_MAX = ContinuousParameters.get_log_sig_max()
+LOG_SIG_MIN = ContinuousParameters.get_log_sig_min()
+VALUE_SCALING = ContinuousParameters.get_value_scaling()
+epsilon = ContinuousParameters.get_epsilon()
 
 torch.autograd.set_detect_anomaly(True)
 

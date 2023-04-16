@@ -138,14 +138,14 @@ def continuous_train(agent, env, memory, writer, args):
                     )
             print("----------------------------------------")
 
-            agent.save_checkpoint(args.env_name.replace("-", "_"), ckpt_path=f"{args.env_name.replace('-', '_')}_{args.divergence}_{args.alpha}_{i_episode}")
+            if (i_episode % 1000 == 0):
+                agent.save_checkpoint(args.env_name.replace("-", "_"), ckpt_path=f"{args.env_name.replace('-', '_')}_{args.divergence}_{args.alpha}_{i_episode}")
 
         if total_numsteps > args.num_steps or i_episode >= args.num_episodes:
             print("Training Complete")
             return None
 
         env.close()
-
 
 def continuous_evaluate(agent, env, args):
 
