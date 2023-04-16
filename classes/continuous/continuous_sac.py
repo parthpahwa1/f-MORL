@@ -107,16 +107,18 @@ class ContinuousSAC(object):
 
         return action.detach().cpu().numpy()[0]
 
+    # Are the diveregence function outputs the right sign?
+    # Add -torch.abs() to ensure this.
     def divergence(self, log_pi: torch.Tensor, prior: torch.Tensor) -> torch.Tensor:
         if self.args.divergence == "alpha":
             if self.args.alpha != 1 and self.args.alpha != 0:
                 alpha = self.args.alpha
                 t = (log_pi.exp()+1e-10)/(prior+1e-10)
-                return t.pow(alpha-1)
+                return -torch.abs(t.pow(alpha-1))
             elif self.args.alpha == 1:
-                return log_pi - torch.log(prior)
+                return -torch.abs(log_pi - torch.log(prior))
             elif self.args.alpha == 0:
-                return -prior * torch.log((log_pi.exp() + 1e-10) / (prior + 1e-10))
+                return -torch.abs(-prior * torch.log((log_pi.exp() + 1e-10) / (prior + 1e-10)))
         else:
             raise ValueError("Unrecognized divergence type.")
 
